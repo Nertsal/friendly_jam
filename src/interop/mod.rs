@@ -12,6 +12,7 @@ pub enum ServerMessage {
     Error(String),
     // YourToken(String),
     RoomJoined(RoomInfo),
+    StartGame(GameRole),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -20,6 +21,7 @@ pub enum ClientMessage {
     // Login(String),
     CreateRoom,
     JoinRoom(String),
+    SelectRole(GameRole),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

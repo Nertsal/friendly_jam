@@ -1,6 +1,7 @@
 use crate::{
     context::Context,
-    interop::{ClientConnection, RoomInfo},
+    interop::{ClientConnection, ClientMessage, RoomInfo, ServerMessage},
+    model::GameRole,
     render::{mask::MaskedStack, util::UtilRender},
     ui::{layout::AreaOps, *},
 };
@@ -9,24 +10,20 @@ use geng::prelude::*;
 use geng_utils::conversions::Vec2RealConversions;
 
 pub struct Lobby {
-    connection: ClientConnection,
     context: Context,
     ui_context: UiContext,
     ui: LobbyUi,
     mask_stack: MaskedStack,
     util_render: UtilRender,
+    transition: Option<geng::state::Transition>,
 
     state: LobbyState,
 }
 
 pub struct LobbyState {
+    connection: ClientConnection,
     room_info: RoomInfo,
-    selected_role: Option<Role>,
-}
-
-pub enum Role {
-    Dispatcher,
-    Solver,
+    selected_role: Option<GameRole>,
 }
 
 pub struct LobbyUi {}
@@ -35,17 +32,38 @@ impl Lobby {
     pub async fn new(context: &Context, connection: ClientConnection, room_info: RoomInfo) -> Self {
         log::info!("Joined room {}", room_info.code);
         Self {
-            connection,
             context: context.clone(),
             ui_context: UiContext::new(context),
             ui: LobbyUi::new(),
             mask_stack: MaskedStack::new(&context.geng, &context.assets),
             util_render: UtilRender::new(context.clone()),
+            transition: None,
 
             state: LobbyState {
+                connection,
                 room_info,
                 selected_role: None,
             },
+        }
+    }
+
+    fn handle_server_message(&mut self, message: ServerMessage) {
+        match message {
+            ServerMessage::Ping => self.state.connection.send(ClientMessage::Pong),
+            ServerMessage::Error(error) => {
+                log::error!("Error: {}", error);
+            }
+            ServerMessage::RoomJoined(_) => {}
+            ServerMessage::StartGame(game_role) => {
+                log::info!("Starting game as {:?}", game_role);
+                let state: Box<dyn geng::State> = match game_role {
+                    GameRole::Dispatcher => {
+                        Box::new(crate::game::GameDispatcher::new(&self.context))
+                    }
+                    GameRole::Solver => Box::new(crate::game::GameSolver::new(&self.context)),
+                };
+                self.transition = Some(geng::state::Transition::Switch(state));
+            }
         }
     }
 }
@@ -54,6 +72,12 @@ impl geng::State for Lobby {
     fn update(&mut self, delta_time: f64) {
         let delta_time = delta_time as f32;
         self.ui_context.update(delta_time);
+
+        while let Some(message) = self.state.connection.try_recv() {
+            if let Ok(message) = message {
+                self.handle_server_message(message);
+            }
+        }
     }
 
     fn handle_event(&mut self, event: geng::Event) {
@@ -69,15 +93,7 @@ impl geng::State for Lobby {
     }
 
     fn transition(&mut self) -> Option<geng::state::Transition> {
-        if let Some(role) = self.state.selected_role.take() {
-            let state: Box<dyn geng::State> = match role {
-                Role::Dispatcher => Box::new(crate::game::GameDispatcher::new(&self.context)),
-                Role::Solver => Box::new(crate::game::GameSolver::new(&self.context)),
-            };
-            return Some(geng::state::Transition::Switch(state));
-        }
-
-        None
+        self.transition.take()
     }
 
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
@@ -110,6 +126,13 @@ impl geng::State for Lobby {
     }
 }
 
+impl LobbyState {
+    pub fn select_role(&mut self, role: GameRole) {
+        self.selected_role = Some(role);
+        self.connection.send(ClientMessage::SelectRole(role));
+    }
+}
+
 impl LobbyUi {
     pub fn new() -> Self {
         Self {}
@@ -134,7 +157,7 @@ impl LobbyUi {
             .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Диспетчер"));
         button.update(dispatcher, context);
         if button.state.mouse_left.clicked {
-            state.selected_role = Some(Role::Dispatcher);
+            state.select_role(GameRole::Dispatcher);
         }
 
         let button = context
@@ -142,7 +165,7 @@ impl LobbyUi {
             .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Беглец"));
         button.update(solver, context);
         if button.state.mouse_left.clicked {
-            state.selected_role = Some(Role::Solver);
+            state.select_role(GameRole::Solver);
         }
     }
 }

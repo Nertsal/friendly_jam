@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::model::GameRole;
+
 use geng::prelude::{rand::prelude::Distribution, *};
 
 pub struct Client {
@@ -18,13 +20,40 @@ pub struct ServerState {
 pub struct Room {
     pub code: Arc<str>,
     pub players: Vec<ClientId>,
+    pub state: RoomState,
 }
+
+pub enum RoomState {
+    RoleSelection { roles: HashMap<ClientId, GameRole> },
+    Game(RoomGameState),
+}
+
+pub struct RoomGameState {
+    pub dispatcher: DispatcherState,
+    pub solver: SolverState,
+}
+
+impl RoomGameState {
+    pub fn new() -> Self {
+        Self {
+            dispatcher: DispatcherState {},
+            solver: SolverState {},
+        }
+    }
+}
+
+pub struct DispatcherState {}
+
+pub struct SolverState {}
 
 impl Room {
     pub fn new(code: Arc<str>, player: ClientId) -> Self {
         Self {
             code,
             players: vec![player],
+            state: RoomState::RoleSelection {
+                roles: HashMap::new(),
+            },
         }
     }
 
@@ -127,6 +156,7 @@ impl ServerState {
                 if let Some(room) = self.rooms.get_mut(&code) {
                     if room.players.len() < 2 {
                         room.player_join(client_id);
+                        client.room = Some(code.clone());
                         client.sender.send(ServerMessage::RoomJoined(room.info()));
                     } else {
                         client
@@ -137,6 +167,45 @@ impl ServerState {
                     client
                         .sender
                         .send(ServerMessage::Error("non-existent room code".into()));
+                }
+            }
+            ClientMessage::SelectRole(role) => {
+                let Some(room) = client
+                    .room
+                    .as_ref()
+                    .and_then(|code| self.rooms.get_mut(code))
+                else {
+                    return;
+                };
+
+                let RoomState::RoleSelection { roles } = &mut room.state else {
+                    return;
+                };
+                log::debug!("Player {client_id} selected role {role:?}");
+                roles.insert(client_id, role);
+
+                if roles.len() == room.players.len() && roles.len() == 2 {
+                    let roles_list: Vec<GameRole> = roles.values().copied().collect();
+                    if roles_list[0] == roles_list[1] {
+                        // Select roles randomly
+                        let mut role = (GameRole::Dispatcher, GameRole::Solver);
+                        if thread_rng().gen_bool(0.5) {
+                            std::mem::swap(&mut role.0, &mut role.1);
+                        }
+                        for (role, player) in [role.0, role.1].into_iter().zip(roles.values_mut()) {
+                            *player = role;
+                        }
+                    }
+
+                    let roles = roles.clone();
+                    room.state = RoomState::Game(RoomGameState::new());
+                    for player in &room.players {
+                        if let Some(&role) = roles.get(player)
+                            && let Some(client) = self.clients.get_mut(player)
+                        {
+                            client.sender.send(ServerMessage::StartGame(role));
+                        }
+                    }
                 }
             }
         }
