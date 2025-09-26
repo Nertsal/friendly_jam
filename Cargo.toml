@@ -1,13 +1,35 @@
 [package]
 name = "friendly_jam"
+version.workspace = true
+edition.workspace = true
+
+[workspace]
+members = ["crates/*"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace.dependencies]
+friendly-derive = { path = "crates/friendly-derive" }
 geng = "0.18"
 geng-utils = "0.4.0"
 serde = { version = "1.0.219", features = ["derive"] }
 wasm-bindgen = { version = "=0.2.100", features = ["serde"] }
+rusttype = { version = "0.9.3", features = ["gpu_cache"] }
+
+darling = "0.21.3"
+proc-macro2 = "1.0.101"
+quote = "1.0.40"
+thiserror = "2.0.16"
+
+[dependencies]
+friendly-derive.workspace = true
+geng.workspace = true
+geng-utils.workspace = true
+serde.workspace = true
+wasm-bindgen.workspace = true
+rusttype.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = "=0.3.77"

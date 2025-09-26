@@ -1,15 +1,44 @@
+mod font;
+
+pub use self::font::Font;
+
 use std::path::PathBuf;
 
 use geng::prelude::*;
 
 #[derive(geng::asset::Load)]
-pub struct Assets {}
+pub struct Assets {
+    pub sounds: SoundAssets,
+    pub atlas: SpritesAtlas,
+    pub shaders: ShaderAssets,
+    #[load(path = "dungeon-mode.ttf")]
+    pub font: Rc<Font>,
+}
 
 impl Assets {
     pub async fn load(manager: &geng::asset::Manager) -> anyhow::Result<Self> {
         geng::asset::Load::load(manager, &run_dir().join("assets"), &()).await
     }
 }
+
+#[derive(geng::asset::Load)]
+pub struct SoundAssets {
+    pub click: Rc<geng::Sound>,
+    pub hover: Rc<geng::Sound>,
+}
+
+#[derive(geng::asset::Load)]
+pub struct ShaderAssets {
+    pub masked: Rc<ugli::Program>,
+    pub texture_ui: Rc<ugli::Program>,
+}
+
+friendly_derive::texture_atlas!(pub SpritesAtlas {
+    white,
+
+    play_dispatcher,
+    play_solver,
+});
 
 #[derive(Clone)]
 pub struct PixelTexture {

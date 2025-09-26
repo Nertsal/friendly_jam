@@ -8,6 +8,8 @@ mod interop;
 mod menu;
 mod model;
 mod render;
+mod ui;
+mod util;
 
 use self::context::Context;
 
@@ -88,8 +90,7 @@ fn main() {
             let manager = geng.asset_manager();
             let assets = assets::Assets::load(manager).await.unwrap();
             let context = Context::new(geng.clone(), Rc::new(assets));
-            // let state = menu::MainMenu::new(&geng, &Rc::new(assets), args.connect).await;
-            let state = game::Game::new(&context, args.connect).await;
+            let state = menu::MainMenu::new(&context, args.connect).await;
             geng.run_state(state).await;
         });
 
