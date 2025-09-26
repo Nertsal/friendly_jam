@@ -136,6 +136,8 @@ impl geng::State for MainMenu {
     }
 
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
+        ugli::clear(framebuffer, Some(Rgba::BLACK), Some(1.0), None);
+
         self.ui_context.state.frame_start();
         self.ui_context.geometry.update(framebuffer.size());
 
@@ -145,11 +147,6 @@ impl geng::State for MainMenu {
             &mut self.ui_context,
         );
         self.ui_context.frame_end();
-
-        ugli::clear(framebuffer, Some(Rgba::BLACK), None, None);
-
-        let camera = &geng::PixelPerfectCamera;
-        ugli::clear(framebuffer, Some(Rgba::TRANSPARENT_BLACK), Some(1.0), None);
 
         let geometry = RefCell::new(Geometry::new());
         self.ui_context.state.iter_widgets(
@@ -162,8 +159,12 @@ impl geng::State for MainMenu {
         );
         let geometry = geometry.into_inner();
 
-        self.util_render
-            .draw_geometry(&mut self.mask_stack, geometry, camera, framebuffer);
+        self.util_render.draw_geometry(
+            &mut self.mask_stack,
+            geometry,
+            &geng::PixelPerfectCamera,
+            framebuffer,
+        );
     }
 }
 
@@ -187,17 +188,17 @@ impl MainMenuUi {
         let mut join = create.split_bottom(0.5);
         let code = join.split_right(0.5);
 
-        let button = context
-            .state
-            .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Create room"));
+        let button = context.state.get_root_or(|| {
+            ButtonWidget::new(atlas.button_background()).with_text("Создать комнату")
+        });
         button.update(create, context);
         if button.state.mouse_left.clicked {
             state.action = Some(Action::CreateRoom);
         }
 
-        let join_button = context
-            .state
-            .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Join"));
+        let join_button = context.state.get_root_or(|| {
+            ButtonWidget::new(atlas.button_background()).with_text("Присоединиться")
+        });
         join_button.update(join, context);
 
         let code_input = context.state.get_root_or(|| InputWidget::new(""));

@@ -11,7 +11,7 @@ pub struct Assets {
     pub sounds: SoundAssets,
     pub atlas: SpritesAtlas,
     pub shaders: ShaderAssets,
-    #[load(path = "dungeon-mode.ttf")]
+    #[load(path = "default.ttf")]
     pub font: Rc<Font>,
 }
 

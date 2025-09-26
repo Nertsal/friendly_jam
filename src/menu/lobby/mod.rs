@@ -10,7 +10,6 @@ use geng_utils::conversions::Vec2RealConversions;
 
 pub struct Lobby {
     connection: ClientConnection,
-    room_info: RoomInfo,
     context: Context,
     ui_context: UiContext,
     ui: LobbyUi,
@@ -21,6 +20,7 @@ pub struct Lobby {
 }
 
 pub struct LobbyState {
+    room_info: RoomInfo,
     selected_role: Option<Role>,
 }
 
@@ -36,7 +36,6 @@ impl Lobby {
         log::info!("Joined room {}", room_info.code);
         Self {
             connection,
-            room_info,
             context: context.clone(),
             ui_context: UiContext::new(context),
             ui: LobbyUi::new(),
@@ -44,6 +43,7 @@ impl Lobby {
             util_render: UtilRender::new(context.clone()),
 
             state: LobbyState {
+                room_info,
                 selected_role: None,
             },
         }
@@ -91,10 +91,8 @@ impl geng::State for Lobby {
         );
         self.ui_context.frame_end();
 
-        ugli::clear(framebuffer, Some(Rgba::BLACK), None, None);
-
+        ugli::clear(framebuffer, Some(Rgba::BLACK), Some(1.0), None);
         let camera = &geng::PixelPerfectCamera;
-        ugli::clear(framebuffer, Some(Rgba::TRANSPARENT_BLACK), Some(1.0), None);
 
         let geometry = RefCell::new(Geometry::new());
         self.ui_context.state.iter_widgets(
@@ -123,12 +121,17 @@ impl LobbyUi {
         context.layout_size = screen.height() * 0.07;
         let atlas = &context.context.assets.atlas;
 
-        let mut solver = screen;
-        let dispatcher = solver.split_left(0.5);
+        let mut code = screen;
+        let mut solver = code.split_bottom(0.66);
+        let dispatcher = solver.split_right(0.5);
+
+        let code_text = context.state.get_root_or(|| TextWidget::new(""));
+        code_text.text = format!("Код комнаты: {}", state.room_info.code).into();
+        code_text.update(code, context);
 
         let button = context
             .state
-            .get_root_or(|| ButtonWidget::new(atlas.play_dispatcher()));
+            .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Диспетчер"));
         button.update(dispatcher, context);
         if button.state.mouse_left.clicked {
             state.selected_role = Some(Role::Dispatcher);
@@ -136,7 +139,7 @@ impl LobbyUi {
 
         let button = context
             .state
-            .get_root_or(|| ButtonWidget::new(atlas.play_solver()));
+            .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Беглец"));
         button.update(solver, context);
         if button.state.mouse_left.clicked {
             state.selected_role = Some(Role::Solver);

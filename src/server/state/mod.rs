@@ -102,7 +102,7 @@ impl ServerState {
                     None => 'room: {
                         for _ in 0..10 {
                             let code: String =
-                                rand::distributions::Uniform::new_inclusive('A', 'B')
+                                rand::distributions::Uniform::new_inclusive('A', 'Z')
                                     .sample_iter(&mut thread_rng())
                                     .take(4)
                                     .collect();
