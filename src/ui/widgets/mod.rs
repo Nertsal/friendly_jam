@@ -1,9 +1,10 @@
 use super::*;
 
 mod button;
+mod input;
 mod text;
 
-pub use self::{button::*, text::*};
+pub use self::{button::*, input::*, text::*};
 
 use std::any::Any;
 

@@ -36,6 +36,7 @@ pub struct ShaderAssets {
 friendly_derive::texture_atlas!(pub SpritesAtlas {
     white,
 
+    button_background,
     play_dispatcher,
     play_solver,
 });

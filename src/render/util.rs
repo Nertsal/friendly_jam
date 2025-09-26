@@ -178,7 +178,7 @@ impl UtilRender {
             vec2::splat(std::f32::consts::FRAC_1_SQRT_2),
         ) - crate::util::world_to_screen(camera, framebuffer_size, vec2::ZERO);
         options.size *= scale.len();
-        let font_size = options.size * 0.6; // TODO: could rescale all dependent code but whatever
+        let font_size = options.size;
 
         let mut position = position;
         for line in text.lines() {

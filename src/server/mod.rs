@@ -3,7 +3,7 @@ mod state;
 
 use self::{connection::ClientConnection, state::*};
 
-use crate::{interop::*, model::*};
+use crate::interop::*;
 
 use geng::prelude::*;
 
@@ -37,28 +37,9 @@ impl geng::net::server::App for App {
 
     type ClientMessage = ClientMessage;
 
-    fn connect(
-        &mut self,
-        mut sender: Box<dyn geng::net::Sender<Self::ServerMessage>>,
-    ) -> Self::Client {
+    fn connect(&mut self, sender: Box<dyn geng::net::Sender<Self::ServerMessage>>) -> Self::Client {
         let mut state = self.state.lock().unwrap();
-        if state.clients.is_empty() {
-            state.timer.reset();
-        }
-
-        let my_id = state.next_id;
-        state.next_id += 1;
-
-        sender.send(ServerMessage::Ping);
-        // let token = Alphanumeric.sample_string(&mut thread_rng(), 16);
-        // sender.send(ServerMessage::YourToken(token.clone()));
-
-        let client = Client {
-            // token,
-            sender,
-        };
-
-        state.clients.insert(my_id, client);
+        let my_id = state.client_connect(sender);
         ClientConnection {
             id: my_id,
             state: self.state.clone(),

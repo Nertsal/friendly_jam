@@ -22,10 +22,14 @@ pub struct UiContext {
     pub geometry: GeometryContext,
 
     pub cursor: CursorContext,
+    pub text_edit: TextEdit,
 
     pub real_time: f32,
     pub delta_time: f32,
     pub screen: Aabb2<f32>,
+
+    pub font_size: f32,
+    pub layout_size: f32,
 }
 
 impl UiContext {
@@ -37,16 +41,19 @@ impl UiContext {
             geometry: GeometryContext::new(context.assets.clone()),
 
             cursor: CursorContext::new(),
+            text_edit: TextEdit::new(&context.geng),
 
             screen: Aabb2::ZERO.extend_positive(vec2(1.0, 1.0)),
             real_time: 0.0,
             delta_time: 0.1,
+
+            font_size: 1.0,
+            layout_size: 1.0,
         }
     }
 
     /// Should be called before layout.
     /// Updates input values.
-    // TODO: use window from context
     pub fn update(&mut self, delta_time: f32) {
         self.real_time += delta_time;
         self.delta_time = delta_time;
@@ -282,5 +289,84 @@ impl WidgetSfxConfig {
             left_click: true,
             ..default()
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct TextEdit(Rc<RefCell<TextEditImpl>>);
+
+struct TextEditImpl {
+    geng: Option<Geng>,
+    /// Counter for the number of text edits.
+    counter: usize,
+    text: String,
+}
+
+impl Debug for TextEdit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TextEdit")
+            .field("geng", &"<reference>")
+            .finish()
+    }
+}
+
+impl TextEdit {
+    pub fn new(geng: &Geng) -> Self {
+        Self(Rc::new(RefCell::new(TextEditImpl {
+            geng: Some(geng.clone()),
+            counter: 0,
+            text: String::new(),
+        })))
+    }
+
+    pub fn get_text(&self) -> String {
+        self.0.borrow().text.clone()
+    }
+
+    pub fn set_text(&self, text: String) {
+        self.0.borrow_mut().text = text;
+    }
+
+    /// Starts the text edit and returns the id.
+    pub fn edit(&self, text: &str) -> usize {
+        let mut inner = self.0.borrow_mut();
+        if let Some(geng) = inner.geng.clone() {
+            if geng.window().is_editing_text() {
+                geng.window().stop_text_edit();
+                inner.counter += 1;
+            }
+            geng.window().start_text_edit(text);
+            text.clone_into(&mut inner.text);
+            inner.counter
+        } else {
+            0
+        }
+    }
+
+    /// Stop editing text.
+    pub fn stop(&self) {
+        let mut inner = self.0.borrow_mut();
+        if let Some(geng) = &inner.geng {
+            if !geng.window().is_editing_text() {
+                return;
+            }
+            geng.window().stop_text_edit();
+            inner.counter += 1;
+        }
+    }
+
+    /// Check if the id is an active edit.
+    pub fn is_active(&self, id: usize) -> bool {
+        let inner = self.0.borrow();
+        inner.geng.is_some() && id == inner.counter
+    }
+
+    /// Check if there is an active edit.
+    pub fn any_active(&self) -> bool {
+        self.0
+            .borrow()
+            .geng
+            .as_ref()
+            .is_some_and(|geng| geng.window().is_editing_text())
     }
 }
