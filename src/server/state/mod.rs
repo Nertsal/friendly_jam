@@ -11,7 +11,8 @@ pub struct Client {
 }
 
 pub struct ServerState {
-    pub timer: Timer,
+    test: bool,
+    timer: Timer,
     next_id: ClientId,
     clients: HashMap<ClientId, Client>,
     rooms: HashMap<Arc<str>, Room>,
@@ -72,8 +73,9 @@ impl Room {
 impl ServerState {
     pub const TICKS_PER_SECOND: f32 = 2.0;
 
-    pub fn new() -> Self {
+    pub fn new(test: bool) -> Self {
         Self {
+            test,
             timer: Timer::new(),
             next_id: 1,
             clients: HashMap::new(),
@@ -184,25 +186,35 @@ impl ServerState {
                 log::debug!("Player {client_id} selected role {role:?}");
                 roles.insert(client_id, role);
 
-                if roles.len() == room.players.len() && roles.len() == 2 {
-                    let roles_list: Vec<GameRole> = roles.values().copied().collect();
-                    if roles_list[0] == roles_list[1] {
-                        // Select roles randomly
-                        let mut role = (GameRole::Dispatcher, GameRole::Solver);
-                        if thread_rng().gen_bool(0.5) {
-                            std::mem::swap(&mut role.0, &mut role.1);
+                if roles.len() == room.players.len() {
+                    if roles.len() == 2 {
+                        let roles_list: Vec<GameRole> = roles.values().copied().collect();
+                        if roles_list[0] == roles_list[1] {
+                            // Select roles randomly
+                            let mut role = (GameRole::Dispatcher, GameRole::Solver);
+                            if thread_rng().gen_bool(0.5) {
+                                std::mem::swap(&mut role.0, &mut role.1);
+                            }
+                            for (role, player) in
+                                [role.0, role.1].into_iter().zip(roles.values_mut())
+                            {
+                                *player = role;
+                            }
                         }
-                        for (role, player) in [role.0, role.1].into_iter().zip(roles.values_mut()) {
-                            *player = role;
-                        }
-                    }
 
-                    let roles = roles.clone();
-                    room.state = RoomState::Game(RoomGameState::new());
-                    for player in &room.players {
-                        if let Some(&role) = roles.get(player)
-                            && let Some(client) = self.clients.get_mut(player)
-                        {
+                        let roles = roles.clone();
+                        room.state = RoomState::Game(RoomGameState::new());
+                        for player in &room.players {
+                            if let Some(&role) = roles.get(player)
+                                && let Some(client) = self.clients.get_mut(player)
+                            {
+                                client.sender.send(ServerMessage::StartGame(role));
+                            }
+                        }
+                    } else if self.test && roles.len() == 1 {
+                        let role = *roles.values().next().unwrap();
+                        if let Some(client) = self.clients.get_mut(&room.players[0]) {
+                            room.state = RoomState::Game(RoomGameState::new());
                             client.sender.send(ServerMessage::StartGame(role));
                         }
                     }

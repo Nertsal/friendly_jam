@@ -2,6 +2,8 @@ mod font;
 
 pub use self::font::Font;
 
+use crate::render::Color;
+
 use std::path::PathBuf;
 
 use geng::prelude::*;
@@ -11,6 +13,7 @@ pub struct Assets {
     pub sounds: SoundAssets,
     pub atlas: SpritesAtlas,
     pub shaders: ShaderAssets,
+    pub palette: Palette,
     #[load(path = "default.ttf")]
     pub font: Rc<Font>,
 }
@@ -19,6 +22,12 @@ impl Assets {
     pub async fn load(manager: &geng::asset::Manager) -> anyhow::Result<Self> {
         geng::asset::Load::load(manager, &run_dir().join("assets"), &()).await
     }
+}
+
+#[derive(geng::asset::Load, Serialize, Deserialize)]
+#[load(serde = "ron")]
+pub struct Palette {
+    pub background: Color,
 }
 
 #[derive(geng::asset::Load)]

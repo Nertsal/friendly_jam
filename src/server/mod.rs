@@ -14,8 +14,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> Self {
-        let state = Arc::new(Mutex::new(ServerState::new()));
+    pub fn new(test: bool) -> Self {
+        let state = Arc::new(Mutex::new(ServerState::new(test)));
         Self {
             state: state.clone(),
             background_thread: std::thread::spawn(move || {

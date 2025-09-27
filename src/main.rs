@@ -23,6 +23,8 @@ struct Args {
     pub connect: Option<String>,
     #[clap(flatten)]
     pub geng: geng::CliArgs,
+    #[clap(long)]
+    pub test: bool,
 }
 
 fn main() {
@@ -67,8 +69,10 @@ fn main() {
     if args.server.is_some() && args.connect.is_none() {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let server =
-                geng::net::Server::new(server::App::new(), args.server.as_deref().unwrap());
+            let server = geng::net::Server::new(
+                server::App::new(args.test),
+                args.server.as_deref().unwrap(),
+            );
             let server_handle = server.handle();
             ctrlc::set_handler(move || server_handle.shutdown()).unwrap();
             server.run();
@@ -76,7 +80,7 @@ fn main() {
     } else {
         #[cfg(not(target_arch = "wasm32"))]
         let server = if let Some(addr) = &args.server {
-            let server = geng::net::Server::new(server::App::new(), addr);
+            let server = geng::net::Server::new(server::App::new(args.test), addr);
             let server_handle = server.handle();
             let server_thread = std::thread::spawn(move || {
                 server.run();
