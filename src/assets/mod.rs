@@ -1,6 +1,7 @@
+mod dispatcher;
 mod font;
 
-pub use self::font::Font;
+pub use self::{dispatcher::*, font::Font};
 
 use crate::render::Color;
 
@@ -14,6 +15,8 @@ pub struct Assets {
     pub atlas: SpritesAtlas,
     pub shaders: ShaderAssets,
     pub palette: Palette,
+    pub sprites: SpriteAssets,
+    pub dispatcher: DispatcherAssets,
     #[load(path = "default.ttf")]
     pub font: Rc<Font>,
 }
@@ -23,6 +26,9 @@ impl Assets {
         geng::asset::Load::load(manager, &run_dir().join("assets"), &()).await
     }
 }
+
+#[derive(geng::asset::Load)]
+pub struct SpriteAssets {}
 
 #[derive(geng::asset::Load, Serialize, Deserialize)]
 #[load(serde = "ron")]

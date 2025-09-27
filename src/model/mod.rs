@@ -6,4 +6,15 @@ pub enum GameRole {
     Solver,
 }
 
-pub struct Model {}
+#[derive(Serialize, Deserialize)]
+pub struct DispatcherState {
+    pub door_sign_open: bool,
+}
+
+impl DispatcherState {
+    pub fn new() -> Self {
+        Self {
+            door_sign_open: false,
+        }
+    }
+}

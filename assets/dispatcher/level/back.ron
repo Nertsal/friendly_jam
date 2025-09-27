@@ -1,0 +1,9 @@
+#![enable(implicit_some)]
+(
+    items: {
+        DoorSign: (
+            anchor: (960, 540),
+            size: (480, 480),
+        ),
+    },
+)
