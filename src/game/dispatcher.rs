@@ -60,8 +60,9 @@ impl GameDispatcher {
             None,
         );
 
-        let level = self.level.get_side_mut(self.client_state.active_side);
         let sprites = &self.context.assets.dispatcher.sprites;
+
+        let level = self.level.get_side_mut(self.client_state.active_side);
         for (item, positioning) in &mut level.items {
             let texture = match item {
                 DispatcherItem::DoorSign => {
@@ -71,13 +72,15 @@ impl GameDispatcher {
                         &sprites.sign_closed
                     }
                 }
+                DispatcherItem::Table => &sprites.table,
+                DispatcherItem::Monitor => &sprites.monitor,
             };
             let size = positioning
                 .size
                 .unwrap_or(texture.size().as_f32() * self.texture_scaling);
-            let pos = Aabb2::point(positioning.anchor).extend_symmetric(size / 2.0);
-            let draw =
-                geng_utils::texture::DrawTexture::new(texture).fit(pos, positioning.alignment);
+            let pos = Aabb2::point(positioning.anchor - size * positioning.alignment)
+                .extend_positive(size);
+            let draw = geng_utils::texture::DrawTexture::new(texture).fit(pos, vec2(0.5, 0.5));
             positioning.hitbox = draw.target;
             draw.draw(&geng::PixelPerfectCamera, &self.context.geng, framebuffer);
         }
@@ -91,6 +94,7 @@ impl GameDispatcher {
                     DispatcherItem::DoorSign => {
                         self.state.door_sign_open = !self.state.door_sign_open
                     }
+                    _ => {}
                 }
             }
         }

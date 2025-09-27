@@ -10,6 +10,8 @@ pub struct DispatcherAssets {
 pub struct DispatcherSprites {
     pub sign_open: PixelTexture,
     pub sign_closed: PixelTexture,
+    pub table: PixelTexture,
+    pub monitor: PixelTexture,
 }
 
 #[derive(geng::asset::Load, Clone)]
@@ -31,12 +33,14 @@ pub enum DispatcherViewSide {
 #[derive(geng::asset::Load, Serialize, Deserialize, Clone)]
 #[load(serde = "ron")]
 pub struct DispatcherView {
-    pub items: HashMap<DispatcherItem, DispatcherItemPosition>,
+    pub items: Vec<(DispatcherItem, DispatcherItemPosition)>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 pub enum DispatcherItem {
     DoorSign,
+    Table,
+    Monitor,
 }
 
 /// Positioning in screen-space with fixed 1920x1080 resolution.

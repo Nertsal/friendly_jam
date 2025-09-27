@@ -1,5 +1,19 @@
 #![enable(implicit_some)]
 (
-    items: {
-    },
+    items: [
+        (
+            Table,
+            (
+                anchor: (0, 0),
+                alignment: (0, 0),
+            ),
+        ),
+        (
+            Monitor,
+            (
+                anchor: (0, 0),
+                alignment: (0, 0),
+            ),
+        ),
+    ],
 )
