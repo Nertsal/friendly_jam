@@ -20,7 +20,7 @@ pub struct GameDispatcher {
 
     client_state: DispatcherStateClient,
     state: DispatcherState,
-    level: DispatcherLevel,
+    items_layout: HashMap<(DispatcherViewSide, usize), Aabb2<f32>>,
 
     turn_left: Aabb2<f32>,
     turn_right: Aabb2<f32>,
@@ -48,7 +48,7 @@ impl GameDispatcher {
                 active_side: DispatcherViewSide::Back,
             },
             state: DispatcherState::new(),
-            level: context.assets.get().dispatcher.level.clone(),
+            items_layout: HashMap::new(),
 
             turn_left: Aabb2::point(vec2(TURN_BUTTON_SIZE.x / 2.0, SCREEN_SIZE.y as f32 / 2.0))
                 .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
@@ -61,21 +61,20 @@ impl GameDispatcher {
     }
 
     fn draw_game(&mut self) {
+        let assets = self.context.assets.get();
         let framebuffer = &mut geng_utils::texture::attach_texture(
             &mut self.final_texture,
             self.context.geng.ugli(),
         );
-        ugli::clear(
-            framebuffer,
-            Some(self.context.assets.get().palette.background),
-            None,
-            None,
-        );
+        ugli::clear(framebuffer, Some(assets.palette.background), None, None);
 
-        let sprites = &self.context.assets.get().dispatcher.sprites;
+        let sprites = &assets.dispatcher.sprites;
 
-        let level = self.level.get_side_mut(self.client_state.active_side);
-        for (item, positioning) in &mut level.items {
+        let level = assets
+            .dispatcher
+            .level
+            .get_side(self.client_state.active_side);
+        for (item_index, (item, positioning)) in level.items.iter().enumerate() {
             let texture = match item {
                 DispatcherItem::DoorSign => {
                     if self.state.door_sign_open {
@@ -93,7 +92,10 @@ impl GameDispatcher {
             let pos = Aabb2::point(positioning.anchor - size * positioning.alignment)
                 .extend_positive(size);
             let draw = geng_utils::texture::DrawTexture::new(texture).fit(pos, vec2(0.5, 0.5));
-            positioning.hitbox = draw.target;
+
+            self.items_layout
+                .insert((self.client_state.active_side, item_index), draw.target);
+
             draw.draw(&geng::PixelPerfectCamera, &self.context.geng, framebuffer);
         }
 
@@ -111,6 +113,8 @@ impl GameDispatcher {
     }
 
     fn cursor_press(&mut self) {
+        let assets = self.context.assets.get();
+
         if self.turn_left.contains(self.cursor_position_game) {
             self.client_state.active_side = self.client_state.active_side.cycle_left();
             return;
@@ -119,9 +123,18 @@ impl GameDispatcher {
             return;
         }
 
-        let level = self.level.get_side_mut(self.client_state.active_side);
-        for (item, positioning) in &level.items {
-            if positioning.hitbox.contains(self.cursor_position_game) {
+        let level = assets
+            .dispatcher
+            .level
+            .get_side(self.client_state.active_side);
+        for (item_index, (item, _)) in level.items.iter().enumerate() {
+            let Some(&hitbox) = self
+                .items_layout
+                .get(&(self.client_state.active_side, item_index))
+            else {
+                continue;
+            };
+            if hitbox.contains(self.cursor_position_game) {
                 match item {
                     DispatcherItem::DoorSign => {
                         self.state.door_sign_open = !self.state.door_sign_open

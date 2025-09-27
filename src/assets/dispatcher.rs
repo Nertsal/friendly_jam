@@ -24,7 +24,7 @@ pub struct DispatcherLevel {
     pub back: DispatcherView,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DispatcherViewSide {
     Front,
     Left,
@@ -52,8 +52,6 @@ pub struct DispatcherItemPosition {
     #[serde(default = "default_alignment")]
     pub alignment: vec2<f32>,
     pub size: Option<vec2<f32>>,
-    #[serde(skip, default = "default_target")]
-    pub hitbox: Aabb2<f32>,
 }
 
 fn default_alignment() -> vec2<f32> {
@@ -65,12 +63,12 @@ fn default_target() -> Aabb2<f32> {
 }
 
 impl DispatcherLevel {
-    pub fn get_side_mut(&mut self, side: DispatcherViewSide) -> &mut DispatcherView {
+    pub fn get_side(&self, side: DispatcherViewSide) -> &DispatcherView {
         match side {
-            DispatcherViewSide::Front => &mut self.front,
-            DispatcherViewSide::Left => &mut self.left,
-            DispatcherViewSide::Right => &mut self.right,
-            DispatcherViewSide::Back => &mut self.back,
+            DispatcherViewSide::Front => &self.front,
+            DispatcherViewSide::Left => &self.left,
+            DispatcherViewSide::Right => &self.right,
+            DispatcherViewSide::Back => &self.back,
         }
     }
 }
