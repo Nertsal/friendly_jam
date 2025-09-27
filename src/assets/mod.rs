@@ -1,7 +1,8 @@
 mod dispatcher;
 mod font;
+mod solver;
 
-pub use self::{dispatcher::*, font::Font};
+pub use self::{dispatcher::*, font::Font, solver::*};
 
 use crate::render::Color;
 
@@ -17,6 +18,7 @@ pub struct Assets {
     pub palette: Palette,
     pub sprites: SpriteAssets,
     pub dispatcher: DispatcherAssets,
+    pub solver: SolverAssets,
     #[load(path = "default.ttf")]
     pub font: Rc<Font>,
 }
