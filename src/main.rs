@@ -33,6 +33,10 @@ fn main() {
 
     let mut args: Args = clap::Parser::parse();
 
+    if cfg!(debug_assertions) {
+        args.geng.hot_reload = Some(true);
+    }
+
     let mut geng_options = geng::ContextOptions::default();
     geng_options.window.title = "Friendly Jam".to_string();
     geng_options.with_cli(&args.geng);
@@ -92,7 +96,10 @@ fn main() {
 
         Geng::run_with(&geng_options, move |geng| async move {
             let manager = geng.asset_manager();
-            let assets = assets::Assets::load(manager).await.unwrap();
+            let assets: Hot<assets::Assets> =
+                geng::asset::Load::load(manager, &run_dir().join("assets"), &())
+                    .await
+                    .unwrap();
             let context = Context::new(geng.clone(), Rc::new(assets));
             let state = menu::main::MainMenu::new(&context, args.connect).await;
             geng.run_state(state).await;

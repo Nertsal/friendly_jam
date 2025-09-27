@@ -35,7 +35,7 @@ impl Lobby {
             context: context.clone(),
             ui_context: UiContext::new(context),
             ui: LobbyUi::new(),
-            mask_stack: MaskedStack::new(&context.geng, &context.assets),
+            mask_stack: MaskedStack::new(context),
             util_render: UtilRender::new(context.clone()),
             transition: None,
 
@@ -142,7 +142,7 @@ impl LobbyUi {
         context.screen = screen;
         context.font_size = screen.height() * 0.05;
         context.layout_size = screen.height() * 0.07;
-        let atlas = &context.context.assets.atlas;
+        let atlas = &context.context.assets.get().atlas;
 
         let mut code = screen;
         let mut solver = code.split_bottom(0.66);

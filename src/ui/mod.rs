@@ -36,7 +36,7 @@ impl UiContext {
     pub fn new(context: &Context) -> Self {
         Self {
             context: context.clone(),
-            font: context.assets.font.clone(),
+            font: context.assets.get().font.clone(),
             state: UiState::new(),
             geometry: GeometryContext::new(context.assets.clone()),
 
@@ -204,11 +204,11 @@ impl WidgetState {
                 .update(context, self.hovered, &context.cursor.right);
 
             if self.mouse_left.clicked && self.sfx_config.left_click {
-                let mut sfx = context.context.assets.sounds.click.play();
+                let mut sfx = context.context.assets.get().sounds.click.play();
                 sfx.set_volume(0.5);
             }
             if !was_hovered && self.hovered && self.sfx_config.hover {
-                let mut sfx = context.context.assets.sounds.hover.play();
+                let mut sfx = context.context.assets.get().sounds.hover.play();
                 sfx.set_volume(0.5);
             }
         } else {

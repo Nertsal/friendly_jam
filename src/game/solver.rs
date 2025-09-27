@@ -115,7 +115,7 @@ impl GameSolver {
         );
         ugli::clear(
             framebuffer,
-            Some(self.context.assets.palette.background),
+            Some(self.context.assets.get().palette.background),
             None,
             None,
         );
@@ -129,30 +129,32 @@ impl GameSolver {
     }
 
     fn update_player(&mut self, delta_time: FTime) {
-        let state = &mut self.client_state;
-        let rules = &self.context.assets.solver.rules;
-        state.player.update_timers(delta_time);
-
-        // Update Jump Buffer
-        if self.player_control.jump {
-            state.player.jump_buffer = Some(rules.buffer_time);
-        }
-
-        // Update Jump Hold
-        if state.player.can_hold_jump && !self.player_control.hold_jump {
-            state.player.can_hold_jump = false;
-        }
-
-        // Update look direction
-        let player = &mut state.player;
-        if player.facing_left && player.velocity.x > FCoord::ZERO
-            || !player.facing_left && player.velocity.x < FCoord::ZERO
         {
-            player.facing_left = !player.facing_left;
-        }
+            let state = &mut self.client_state;
+            let rules = &self.context.assets.get().solver.rules;
+            state.player.update_timers(delta_time);
 
-        // Apply gravity
-        state.player.velocity += rules.gravity * delta_time;
+            // Update Jump Buffer
+            if self.player_control.jump {
+                state.player.jump_buffer = Some(rules.buffer_time);
+            }
+
+            // Update Jump Hold
+            if state.player.can_hold_jump && !self.player_control.hold_jump {
+                state.player.can_hold_jump = false;
+            }
+
+            // Update look direction
+            let player = &mut state.player;
+            if player.facing_left && player.velocity.x > FCoord::ZERO
+                || !player.facing_left && player.velocity.x < FCoord::ZERO
+            {
+                player.facing_left = !player.facing_left;
+            }
+
+            // Apply gravity
+            state.player.velocity += rules.gravity * delta_time;
+        }
 
         self.player_variable_jump(delta_time);
         self.player_horizontal_control(delta_time);
@@ -166,7 +168,7 @@ impl GameSolver {
 
     fn player_variable_jump(&mut self, delta_time: FTime) {
         let state = &mut self.client_state;
-        let rules = &self.context.assets.solver.rules;
+        let rules = &self.context.assets.get().solver.rules;
 
         // Variable jump height
         if state.player.velocity.y < FCoord::ZERO {
@@ -186,7 +188,7 @@ impl GameSolver {
 
     fn player_horizontal_control(&mut self, delta_time: FTime) {
         let state = &mut self.client_state;
-        let rules = &self.context.assets.solver.rules;
+        let rules = &self.context.assets.get().solver.rules;
 
         if state.player.control_timeout.is_some() {
             return;
@@ -226,7 +228,7 @@ impl GameSolver {
 
     fn player_jump(&mut self, _delta_time: FTime) {
         let state = &mut self.client_state;
-        let rules = &self.context.assets.solver.rules;
+        let rules = &self.context.assets.get().solver.rules;
 
         if state.player.jump_buffer.is_none() {
             return;
@@ -267,7 +269,7 @@ impl GameSolver {
     }
 
     fn player_check_ground(&mut self) {
-        let rules = &self.context.assets.solver.rules;
+        let rules = &self.context.assets.get().solver.rules;
         let player = &mut self.client_state.player;
         let was_grounded = matches!(player.state, PlayerState::Grounded);
         if was_grounded {
@@ -335,23 +337,25 @@ impl geng::State for GameSolver {
     fn update(&mut self, delta_time: f64) {
         let delta_time = FTime::new(delta_time as f32);
 
-        let window = self.context.geng.window();
-        let controls = &self.context.assets.solver.controls;
-        if geng_utils::key::is_key_pressed(window, &controls.move_left) {
-            self.player_control.move_dir += vec2(-1.0, 0.0).as_r32();
-        }
-        if geng_utils::key::is_key_pressed(window, &controls.move_right) {
-            self.player_control.move_dir += vec2(1.0, 0.0).as_r32();
-        }
-        if geng_utils::key::is_key_pressed(window, &controls.jump) {
-            self.player_control.hold_jump = true;
+        {
+            let window = self.context.geng.window();
+            let controls = &self.context.assets.get().solver.controls;
+            if geng_utils::key::is_key_pressed(window, &controls.move_left) {
+                self.player_control.move_dir += vec2(-1.0, 0.0).as_r32();
+            }
+            if geng_utils::key::is_key_pressed(window, &controls.move_right) {
+                self.player_control.move_dir += vec2(1.0, 0.0).as_r32();
+            }
+            if geng_utils::key::is_key_pressed(window, &controls.jump) {
+                self.player_control.hold_jump = true;
+            }
         }
 
         self.update_player(delta_time);
     }
 
     fn handle_event(&mut self, event: geng::Event) {
-        let controls = &self.context.assets.solver.controls;
+        let controls = &self.context.assets.get().solver.controls;
         if geng_utils::key::is_event_press(&event, &controls.jump) {
             self.player_control.jump = true;
         }

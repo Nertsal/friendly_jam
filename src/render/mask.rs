@@ -5,8 +5,7 @@ use crate::assets::Assets;
 use super::*;
 
 pub struct MaskedStack {
-    geng: Geng,
-    assets: Rc<Assets>,
+    context: Context,
     unit_quad: Rc<ugli::VertexBuffer<draw2d::TexturedVertex>>,
     size: vec2<usize>,
 
@@ -15,8 +14,7 @@ pub struct MaskedStack {
 }
 
 pub struct MaskFrame {
-    geng: Geng,
-    assets: Rc<Assets>,
+    context: Context,
     unit_quad: Rc<ugli::VertexBuffer<draw2d::TexturedVertex>>,
     mask_texture: ugli::Texture,
     color_texture: ugli::Texture,
@@ -30,11 +28,12 @@ pub struct MaskingFrame<'a> {
 }
 
 impl MaskedStack {
-    pub fn new(geng: &Geng, assets: &Rc<Assets>) -> Self {
+    pub fn new(context: &Context) -> Self {
         Self {
-            geng: geng.clone(),
-            assets: assets.clone(),
-            unit_quad: Rc::new(geng_utils::geometry::unit_quad_geometry(geng.ugli())),
+            context: context.clone(),
+            unit_quad: Rc::new(geng_utils::geometry::unit_quad_geometry(
+                context.geng.ugli(),
+            )),
             size: vec2(1, 1),
 
             current_depth: 0,
@@ -43,17 +42,18 @@ impl MaskedStack {
     }
 
     fn new_frame(&self) -> MaskFrame {
-        let mut mask_texture = geng_utils::texture::new_texture(self.geng.ugli(), self.size);
+        let mut mask_texture =
+            geng_utils::texture::new_texture(self.context.geng.ugli(), self.size);
         mask_texture.set_filter(ugli::Filter::Nearest);
 
-        let mut color_texture = geng_utils::texture::new_texture(self.geng.ugli(), self.size);
+        let mut color_texture =
+            geng_utils::texture::new_texture(self.context.geng.ugli(), self.size);
         color_texture.set_filter(ugli::Filter::Nearest);
 
-        let depth_buffer = ugli::Renderbuffer::new(self.geng.ugli(), self.size);
+        let depth_buffer = ugli::Renderbuffer::new(self.context.geng.ugli(), self.size);
 
         MaskFrame {
-            geng: self.geng.clone(),
-            assets: self.assets.clone(),
+            context: self.context.clone(),
             unit_quad: self.unit_quad.clone(),
             mask_texture,
             color_texture,
@@ -97,9 +97,9 @@ impl MaskedStack {
 impl MaskFrame {
     pub fn start(&mut self) -> MaskingFrame<'_> {
         let mut mask =
-            geng_utils::texture::attach_texture(&mut self.mask_texture, self.geng.ugli());
+            geng_utils::texture::attach_texture(&mut self.mask_texture, self.context.geng.ugli());
         let mut color = ugli::Framebuffer::new(
-            self.geng.ugli(),
+            self.context.geng.ugli(),
             ugli::ColorAttachment::Texture(&mut self.color_texture),
             ugli::DepthAttachment::Renderbuffer(&mut self.depth_buffer),
         );
@@ -108,7 +108,7 @@ impl MaskFrame {
         ugli::clear(&mut color, Some(Rgba::TRANSPARENT_BLACK), Some(1.0), None);
 
         MaskingFrame {
-            geng: &self.geng,
+            geng: &self.context.geng,
             mask,
             color,
         }
@@ -122,7 +122,7 @@ impl MaskFrame {
     ) {
         ugli::draw(
             framebuffer,
-            &self.assets.shaders.masked,
+            &self.context.assets.get().shaders.masked,
             ugli::DrawMode::TriangleFan,
             &*self.unit_quad,
             ugli::uniforms! {

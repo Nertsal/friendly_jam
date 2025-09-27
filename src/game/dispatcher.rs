@@ -48,7 +48,7 @@ impl GameDispatcher {
                 active_side: DispatcherViewSide::Back,
             },
             state: DispatcherState::new(),
-            level: context.assets.dispatcher.level.clone(),
+            level: context.assets.get().dispatcher.level.clone(),
 
             turn_left: Aabb2::point(vec2(TURN_BUTTON_SIZE.x / 2.0, SCREEN_SIZE.y as f32 / 2.0))
                 .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
@@ -67,12 +67,12 @@ impl GameDispatcher {
         );
         ugli::clear(
             framebuffer,
-            Some(self.context.assets.palette.background),
+            Some(self.context.assets.get().palette.background),
             None,
             None,
         );
 
-        let sprites = &self.context.assets.dispatcher.sprites;
+        let sprites = &self.context.assets.get().dispatcher.sprites;
 
         let level = self.level.get_side_mut(self.client_state.active_side);
         for (item, positioning) in &mut level.items {

@@ -135,12 +135,12 @@ impl UtilRender {
             ugli::VertexBuffer::new_dynamic(self.context.geng.ugli(), geometry.triangles);
         ugli::draw(
             framebuffer,
-            &self.context.assets.shaders.texture_ui,
+            &self.context.assets.get().shaders.texture_ui,
             ugli::DrawMode::Triangles,
             &triangles,
             (
                 ugli::uniforms! {
-                    u_texture: self.context.assets.atlas.texture(),
+                    u_texture: self.context.assets.get().atlas.texture(),
                     u_model_matrix: mat3::identity(),
                     u_color: Color::WHITE,
                 },
@@ -166,7 +166,7 @@ impl UtilRender {
         framebuffer: &mut ugli::Framebuffer,
     ) {
         let text = text.as_ref();
-        let font = &self.context.assets.font;
+        let font = &self.context.assets.get().font;
         let framebuffer_size = framebuffer.size().as_f32();
 
         let position = position.map(Float::as_f32);

@@ -23,12 +23,6 @@ pub struct Assets {
     pub font: Rc<Font>,
 }
 
-impl Assets {
-    pub async fn load(manager: &geng::asset::Manager) -> anyhow::Result<Self> {
-        geng::asset::Load::load(manager, &run_dir().join("assets"), &()).await
-    }
-}
-
 #[derive(geng::asset::Load)]
 pub struct SpriteAssets {}
 

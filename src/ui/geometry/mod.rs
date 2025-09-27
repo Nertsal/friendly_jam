@@ -10,7 +10,7 @@ use geng_utils::conversions::Vec2RealConversions;
 
 #[derive(Clone)]
 pub struct GeometryContext {
-    assets: Rc<Assets>,
+    assets: Rc<Hot<Assets>>,
     pub framebuffer_size: vec2<usize>,
     pub pixel_scale: f32,
     z_index: RefCell<f32>,
@@ -93,7 +93,7 @@ impl Geometry {
 const DEFAULT_Z: f32 = 0.0;
 
 impl GeometryContext {
-    pub fn new(assets: Rc<Assets>) -> Self {
+    pub fn new(assets: Rc<Hot<Assets>>) -> Self {
         Self {
             assets,
             framebuffer_size: vec2(1, 1),
@@ -202,7 +202,7 @@ impl GeometryContext {
     pub fn quad(&self, position: Aabb2<f32>, color: Color) -> Geometry {
         let z_index = self.next_z_index();
 
-        let a_vt = self.assets.atlas.white().uv.bottom_left();
+        let a_vt = self.assets.get().atlas.white().uv.bottom_left();
         let [a, b, c, d] = position.corners();
         let triangles = [a, b, c, a, c, d]
             .into_iter()

@@ -37,7 +37,7 @@ impl MainMenu {
             context: context.clone(),
             ui_context: UiContext::new(context),
             ui: MainMenuUi::new(),
-            mask_stack: MaskedStack::new(&context.geng, &context.assets),
+            mask_stack: MaskedStack::new(context),
             util_render: UtilRender::new(context.clone()),
 
             connect,
@@ -182,7 +182,7 @@ impl MainMenuUi {
         context.screen = screen;
         context.font_size = screen.height() * 0.05;
         context.layout_size = screen.height() * 0.07;
-        let atlas = &context.context.assets.atlas;
+        let atlas = &context.context.assets.get().atlas;
 
         let mut create = screen;
         let mut join = create.split_bottom(0.5);
