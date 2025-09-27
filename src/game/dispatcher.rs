@@ -21,6 +21,9 @@ pub struct GameDispatcher {
     client_state: DispatcherStateClient,
     state: DispatcherState,
     level: DispatcherLevel,
+
+    turn_left: Aabb2<f32>,
+    turn_right: Aabb2<f32>,
 }
 
 pub struct DispatcherStateClient {
@@ -29,6 +32,7 @@ pub struct DispatcherStateClient {
 
 impl GameDispatcher {
     pub fn new(context: &Context) -> Self {
+        const TURN_BUTTON_SIZE: vec2<f32> = vec2(50.0, 50.0);
         Self {
             context: context.clone(),
 
@@ -45,6 +49,14 @@ impl GameDispatcher {
             },
             state: DispatcherState::new(),
             level: context.assets.dispatcher.level.clone(),
+
+            turn_left: Aabb2::point(vec2(TURN_BUTTON_SIZE.x / 2.0, SCREEN_SIZE.y as f32 / 2.0))
+                .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
+            turn_right: Aabb2::point(vec2(
+                SCREEN_SIZE.x as f32 - TURN_BUTTON_SIZE.x / 2.0,
+                SCREEN_SIZE.y as f32 / 2.0,
+            ))
+            .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
         }
     }
 
@@ -84,9 +96,29 @@ impl GameDispatcher {
             positioning.hitbox = draw.target;
             draw.draw(&geng::PixelPerfectCamera, &self.context.geng, framebuffer);
         }
+
+        for (texture, mut target) in [
+            (&sprites.arrow_left, self.turn_left),
+            (&sprites.arrow_right, self.turn_right),
+        ] {
+            if target.contains(self.cursor_position_game) {
+                target = target.extend_uniform(target.width() * 0.1);
+            }
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(target, vec2(0.5, 0.5))
+                .draw(&geng::PixelPerfectCamera, &self.context.geng, framebuffer);
+        }
     }
 
     fn cursor_press(&mut self) {
+        if self.turn_left.contains(self.cursor_position_game) {
+            self.client_state.active_side = self.client_state.active_side.cycle_left();
+            return;
+        } else if self.turn_right.contains(self.cursor_position_game) {
+            self.client_state.active_side = self.client_state.active_side.cycle_right();
+            return;
+        }
+
         let level = self.level.get_side_mut(self.client_state.active_side);
         for (item, positioning) in &level.items {
             if positioning.hitbox.contains(self.cursor_position_game) {

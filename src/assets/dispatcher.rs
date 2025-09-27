@@ -12,6 +12,8 @@ pub struct DispatcherSprites {
     pub sign_closed: PixelTexture,
     pub table: PixelTexture,
     pub monitor: PixelTexture,
+    pub arrow_left: PixelTexture,
+    pub arrow_right: PixelTexture,
 }
 
 #[derive(geng::asset::Load, Clone)]
@@ -69,6 +71,26 @@ impl DispatcherLevel {
             DispatcherViewSide::Left => &mut self.left,
             DispatcherViewSide::Right => &mut self.right,
             DispatcherViewSide::Back => &mut self.back,
+        }
+    }
+}
+
+impl DispatcherViewSide {
+    pub fn cycle_left(self) -> Self {
+        match self {
+            Self::Front => Self::Left,
+            Self::Left => Self::Back,
+            Self::Back => Self::Right,
+            Self::Right => Self::Front,
+        }
+    }
+
+    pub fn cycle_right(self) -> Self {
+        match self {
+            Self::Front => Self::Right,
+            Self::Left => Self::Front,
+            Self::Back => Self::Left,
+            Self::Right => Self::Back,
         }
     }
 }
