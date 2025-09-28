@@ -154,7 +154,6 @@ impl geng::State for GameDispatcher {
                 self.cursor_position_game = (position.as_f32() - self.screen.bottom_left())
                     / self.screen.size()
                     * SCREEN_SIZE.as_f32();
-                dbg!(self.cursor_position_game);
             }
             geng::Event::MousePress {
                 button: geng::MouseButton::Left,

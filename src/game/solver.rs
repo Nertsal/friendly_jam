@@ -5,6 +5,7 @@ use crate::model::*;
 use geng_utils::conversions::*;
 
 const SCREEN_SIZE: vec2<usize> = vec2(1920, 1080);
+const LEVEL_SIZE: vec2<f32> = vec2(16.0, 9.0);
 
 pub struct GameSolver {
     context: Context,
@@ -27,6 +28,9 @@ pub struct GameSolver {
 
 struct SolverStateClient {
     player: Player,
+    level_static_colliders: Vec<Collider>,
+    door_entrance: Collider,
+    door_exit: Collider,
 }
 
 struct PlayerControl {
@@ -70,7 +74,7 @@ enum PlayerState {
 
 impl GameSolver {
     pub fn new(context: &Context) -> Self {
-        Self {
+        let mut game = Self {
             context: context.clone(),
 
             final_texture: geng_utils::texture::new_texture(context.geng.ugli(), SCREEN_SIZE),
@@ -96,16 +100,26 @@ impl GameSolver {
                     coyote_time: None,
                     jump_buffer: None,
                 },
+                level_static_colliders: Vec::new(),
+                door_entrance: Collider::aabb(Aabb2::ZERO),
+                door_exit: Collider::aabb(Aabb2::ZERO),
             },
             state: SolverState::new(),
             camera: Camera2d {
-                center: vec2::ZERO,
+                center: LEVEL_SIZE / 2.0,
                 rotation: Angle::ZERO,
-                fov: Camera2dFov::Vertical(10.0),
+                fov: Camera2dFov::Cover {
+                    width: LEVEL_SIZE.x,
+                    height: LEVEL_SIZE.y,
+                    scale: 1.0,
+                },
             },
 
             player_control: PlayerControl::default(),
-        }
+        };
+        game.player_respawn();
+        game.update_level_colliders();
+        game
     }
 
     fn draw_game(&mut self) {
@@ -113,18 +127,108 @@ impl GameSolver {
             &mut self.final_texture,
             self.context.geng.ugli(),
         );
-        ugli::clear(
-            framebuffer,
-            Some(self.context.assets.get().palette.background),
-            None,
-            None,
-        );
+        let assets = self.context.assets.get();
+        ugli::clear(framebuffer, Some(assets.palette.background), None, None);
+
+        let Some(level) = assets.solver.levels.get(self.state.current_level) else {
+            return;
+        };
+
+        // Bounds
+        geng_utils::texture::DrawTexture::new(&assets.solver.sprites.level_bounds)
+            .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
+            .draw(&self.camera, &self.context.geng, framebuffer);
+
+        // Doors
+        geng_utils::texture::DrawTexture::new(&assets.solver.sprites.door_closed)
+            .transformed(mat3::scale(vec2(-1.0, 1.0)))
+            .fit_height(self.client_state.door_entrance.compute_aabb().as_f32(), 0.0)
+            .draw(&self.camera, &self.context.geng, framebuffer);
+        geng_utils::texture::DrawTexture::new(if self.state.is_exit_open() {
+            &assets.solver.sprites.door_open
+        } else {
+            &assets.solver.sprites.door_closed
+        })
+        .fit_height(self.client_state.door_exit.compute_aabb().as_f32(), 1.0)
+        .draw(&self.camera, &self.context.geng, framebuffer);
 
         self.context.geng.draw2d().quad(
             framebuffer,
             &self.camera,
             self.client_state.player.collider.compute_aabb().as_f32(),
             Rgba::RED,
+        );
+    }
+
+    fn player_respawn(&mut self) {
+        self.client_state.level_static_colliders.clear();
+        let assets = self.context.assets.get();
+        let Some(level) = assets.solver.levels.get(self.state.current_level) else {
+            return;
+        };
+
+        let player = &mut self.client_state.player;
+        player.collider.position =
+            level.spawnpoint + vec2(r32(0.0), player.collider.compute_aabb().height() / r32(2.0));
+    }
+
+    fn update_level_colliders(&mut self) {
+        self.client_state.level_static_colliders.clear();
+        let assets = self.context.assets.get();
+        let Some(level) = assets.solver.levels.get(self.state.current_level) else {
+            return;
+        };
+
+        let wall_thickness = r32(1.0);
+        let door_height = r32(2.0);
+
+        // Floor
+        self.client_state
+            .level_static_colliders
+            .push(Collider::aabb(
+                Aabb2::ZERO
+                    .extend_right(r32(LEVEL_SIZE.x))
+                    .extend_up(wall_thickness),
+            ));
+        // Left wall
+        self.client_state
+            .level_static_colliders
+            .push(Collider::aabb(
+                Aabb2::point(vec2(r32(0.0), door_height + wall_thickness))
+                    .extend_up(r32(LEVEL_SIZE.y))
+                    .extend_right(wall_thickness),
+            ));
+        // Right wall
+        self.client_state
+            .level_static_colliders
+            .push(Collider::aabb(
+                Aabb2::point(vec2(LEVEL_SIZE.x.as_r32(), door_height + wall_thickness))
+                    .extend_up(r32(LEVEL_SIZE.y))
+                    .extend_left(wall_thickness),
+            ));
+        // Ceiling
+        self.client_state
+            .level_static_colliders
+            .push(Collider::aabb(
+                Aabb2::point(vec2(0.0, LEVEL_SIZE.y).as_r32())
+                    .extend_right(r32(LEVEL_SIZE.x))
+                    .extend_down(wall_thickness),
+            ));
+
+        let door_width = r32(0.3);
+
+        // Entrance door
+        self.client_state.door_entrance = Collider::aabb(
+            Aabb2::point(vec2(0.0.as_r32(), wall_thickness))
+                .extend_up(door_height)
+                .extend_right(door_width),
+        );
+
+        // Exit door
+        self.client_state.door_exit = Collider::aabb(
+            Aabb2::point(vec2(LEVEL_SIZE.x.as_r32(), wall_thickness))
+                .extend_up(door_height)
+                .extend_left(door_width),
         );
     }
 
@@ -307,10 +411,22 @@ impl GameSolver {
         let player = &mut self.client_state.player;
         player.collider.position += player.velocity * delta_time;
 
-        if let Some(collision) = self.check_collision(&self.client_state.player.collider) {
-            let player = &mut self.client_state.player;
-            player.collider.position -= collision.normal * collision.penetration;
-            player.velocity -= collision.normal * vec2::dot(player.velocity, collision.normal);
+        let fix_collision = |player: &mut Player, other: &Collider| {
+            if let Some(collision) = player.collider.collide(other) {
+                player.collider.position -= collision.normal * collision.penetration;
+                player.velocity -= collision.normal * vec2::dot(player.velocity, collision.normal);
+            }
+        };
+
+        // Static colliders
+        for static_col in &self.client_state.level_static_colliders {
+            fix_collision(player, static_col);
+        }
+
+        // Doors
+        fix_collision(player, &self.client_state.door_entrance);
+        if !self.state.is_exit_open() {
+            fix_collision(player, &self.client_state.door_exit);
         }
     }
 
@@ -319,17 +435,11 @@ impl GameSolver {
     }
 
     fn check_collision(&self, collider: &Collider) -> Option<Collision> {
-        let floor = Collider::aabb(
-            Aabb2::ZERO
-                .extend_symmetric(vec2(50.0, 0.0).as_r32())
-                .extend_down(r32(1.0)),
-        );
-        if let Some(col) = collider.collide(&floor) {
-            return Some(col);
-        }
-
-        // TODO: walls and stuff
-        None
+        self.client_state
+            .level_static_colliders
+            .iter()
+            .filter_map(|static_col| collider.collide(static_col))
+            .max_by_key(|col| col.penetration)
     }
 }
 
@@ -402,6 +512,9 @@ impl Player {
 
     fn feet_collider(&self) -> Collider {
         let aabb = self.collider.compute_aabb();
-        Collider::aabb(aabb.extend_up(-aabb.height() * r32(0.8)))
+        Collider::aabb(
+            aabb.extend_symmetric(-vec2(aabb.width() * r32(0.05), r32(0.0)))
+                .extend_up(-aabb.height() * r32(0.8)),
+        )
     }
 }

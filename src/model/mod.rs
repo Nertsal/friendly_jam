@@ -19,7 +19,10 @@ pub struct DispatcherState {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct SolverState {}
+pub struct SolverState {
+    pub current_level: usize,
+    pub levels_completed: usize,
+}
 
 impl DispatcherState {
     pub fn new() -> Self {
@@ -31,6 +34,13 @@ impl DispatcherState {
 
 impl SolverState {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            current_level: 0,
+            levels_completed: 0,
+        }
+    }
+
+    pub fn is_exit_open(&self) -> bool {
+        self.current_level < self.levels_completed
     }
 }
