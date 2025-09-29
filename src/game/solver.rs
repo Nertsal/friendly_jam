@@ -64,12 +64,20 @@ struct Player {
     pub can_hold_jump: bool,
     pub coyote_time: Option<FTime>,
     pub jump_buffer: Option<FTime>,
+    pub animation_time: FTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum PlayerState {
     Grounded,
     Airborn,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum PlayerAnimationState {
+    Idle,
+    Running,
+    Jumping,
 }
 
 impl GameSolver {
@@ -89,7 +97,7 @@ impl GameSolver {
                 player: Player {
                     collider: Collider::aabb(
                         Aabb2::point(vec2(0.0, 0.0))
-                            .extend_positive(vec2(1.0, 1.0))
+                            .extend_positive(vec2(1.0, 1.5))
                             .as_r32(),
                     ),
                     velocity: vec2::ZERO,
@@ -99,6 +107,7 @@ impl GameSolver {
                     can_hold_jump: false,
                     coyote_time: None,
                     jump_buffer: None,
+                    animation_time: FTime::ZERO,
                 },
                 level_static_colliders: Vec::new(),
                 door_entrance: Collider::aabb(Aabb2::ZERO),
@@ -152,12 +161,29 @@ impl GameSolver {
         .fit_height(self.client_state.door_exit.compute_aabb().as_f32(), 1.0)
         .draw(&self.camera, &self.context.geng, framebuffer);
 
-        self.context.geng.draw2d().quad(
-            framebuffer,
-            &self.camera,
-            self.client_state.player.collider.compute_aabb().as_f32(),
-            Rgba::RED,
-        );
+        // self.context.geng.draw2d().quad(
+        //     framebuffer,
+        //     &self.camera,
+        //     self.client_state.player.collider.compute_aabb().as_f32(),
+        //     Rgba::RED,
+        // );
+        let player = &self.client_state.player;
+        let animation = match player.animation_state() {
+            PlayerAnimationState::Idle => vec![assets.solver.sprites.player.running[0].clone()],
+            PlayerAnimationState::Running => assets.solver.sprites.player.running.clone(),
+            PlayerAnimationState::Jumping => vec![assets.solver.sprites.player.running[0].clone()],
+        };
+        let frame_time = r32(0.1);
+        let frame = (player.animation_time / frame_time)
+            .as_f32()
+            .max(0.0)
+            .floor() as usize
+            % animation.len();
+        let flip = !player.facing_left;
+        geng_utils::texture::DrawTexture::new(&animation[frame])
+            .transformed(mat3::scale(vec2(if flip { -1.0 } else { 1.0 }, 1.0)))
+            .fit_width(player.collider.compute_aabb().as_f32(), 0.0)
+            .draw(&self.camera, &self.context.geng, framebuffer);
     }
 
     fn player_respawn(&mut self) {
@@ -233,6 +259,8 @@ impl GameSolver {
     }
 
     fn update_player(&mut self, delta_time: FTime) {
+        let anim_state = self.client_state.player.animation_state();
+
         {
             let state = &mut self.client_state;
             let rules = &self.context.assets.get().solver.rules;
@@ -266,6 +294,10 @@ impl GameSolver {
 
         self.player_move(delta_time);
         self.player_update_state();
+
+        if anim_state != self.client_state.player.animation_state() {
+            self.client_state.player.animation_time = FTime::ZERO;
+        }
 
         self.player_control.take();
     }
@@ -484,6 +516,8 @@ impl geng::State for GameSolver {
 
 impl Player {
     fn update_timers(&mut self, delta_time: FTime) {
+        self.animation_time += delta_time;
+
         // Coyote Time
         if let Some(time) = &mut self.coyote_time {
             *time -= delta_time;
@@ -500,7 +534,7 @@ impl Player {
             }
         }
 
-        // Controll timeout
+        // Control timeout
         if let Some(time) = &mut self.control_timeout {
             // No horizontal control
             *time -= delta_time;
@@ -516,5 +550,18 @@ impl Player {
             aabb.extend_symmetric(-vec2(aabb.width() * r32(0.05), r32(0.0)))
                 .extend_up(-aabb.height() * r32(0.8)),
         )
+    }
+
+    fn animation_state(&self) -> PlayerAnimationState {
+        match self.state {
+            PlayerState::Grounded => {
+                if self.velocity.x.abs() > r32(0.01) {
+                    PlayerAnimationState::Running
+                } else {
+                    PlayerAnimationState::Idle
+                }
+            }
+            PlayerState::Airborn => PlayerAnimationState::Jumping,
+        }
     }
 }

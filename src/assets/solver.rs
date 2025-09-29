@@ -19,6 +19,13 @@ pub struct SolverSprites {
     pub door_open: Rc<PixelTexture>,
     pub door_closed: Rc<PixelTexture>,
     pub platform: Rc<PixelTexture>,
+    pub player: SolverPlayerSprites,
+}
+
+#[derive(geng::asset::Load)]
+pub struct SolverPlayerSprites {
+    #[load(list = "0..=3")]
+    pub running: Vec<Rc<PixelTexture>>,
 }
 
 #[derive(geng::asset::Load, Serialize, Deserialize)]
