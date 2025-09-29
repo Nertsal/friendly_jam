@@ -14,6 +14,8 @@ pub struct DispatcherSprites {
     pub monitor: Rc<PixelTexture>,
     pub arrow_left: Rc<PixelTexture>,
     pub arrow_right: Rc<PixelTexture>,
+    pub user_icon: Rc<PixelTexture>,
+    pub login_screen: Rc<PixelTexture>,
     pub workspace: Rc<PixelTexture>,
     pub workspace_v2: Rc<PixelTexture>,
 }

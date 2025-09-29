@@ -220,6 +220,12 @@ impl ServerState {
                     }
                 }
             }
+            ClientMessage::SyncDispatcherState(state) => {
+                // TODO
+            }
+            ClientMessage::SyncSolverState(state) => {
+                // TODO
+            }
         }
     }
 

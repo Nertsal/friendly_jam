@@ -86,8 +86,8 @@ impl geng::asset::Load for PixelTexture {
         let path = path.to_owned();
         let texture = ugli::Texture::load(manager, &path, options);
         async move {
-            let mut texture = texture.await?;
-            texture.set_filter(ugli::Filter::Nearest);
+            let texture = texture.await?;
+            // texture.set_filter(ugli::Filter::Nearest);
             Ok(Self {
                 path,
                 texture: Rc::new(texture),

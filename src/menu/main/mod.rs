@@ -78,7 +78,9 @@ impl geng::State for MainMenu {
                     let connect = self.connect.clone();
                     let future = async move {
                         let mut connection =
-                            geng::net::client::connect(&connect.unwrap()).await.unwrap();
+                            crate::interop::ClientConnection::connect(&connect.unwrap())
+                                .await
+                                .unwrap();
                         connection.send(ClientMessage::CreateRoom);
                         let room_info = loop {
                             let message = connection.next().await.unwrap().unwrap();
@@ -106,7 +108,9 @@ impl geng::State for MainMenu {
                     let connect = self.connect.clone();
                     let future = async move {
                         let mut connection =
-                            geng::net::client::connect(&connect.unwrap()).await.unwrap();
+                            crate::interop::ClientConnection::connect(&connect.unwrap())
+                                .await
+                                .unwrap();
                         connection.send(ClientMessage::JoinRoom(code));
                         let room_info = loop {
                             let message = connection.next().await.unwrap().unwrap();

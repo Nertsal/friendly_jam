@@ -1,6 +1,10 @@
 use super::*;
 
-use crate::{assets::*, model::DispatcherState};
+use crate::{
+    assets::*,
+    interop::{ClientConnection, ClientMessage},
+    model::DispatcherState,
+};
 
 use geng_utils::{conversions::Vec2RealConversions, interpolation::SecondOrderState};
 
@@ -8,6 +12,7 @@ const SCREEN_SIZE: vec2<usize> = vec2(1920, 1080);
 
 pub struct GameDispatcher {
     context: Context,
+    connection: ClientConnection,
 
     final_texture: ugli::Texture,
     framebuffer_size: vec2<usize>,
@@ -34,6 +39,7 @@ pub struct GameDispatcher {
 pub struct DispatcherStateClient {
     focus: Focus,
     active_side: DispatcherViewSide,
+    login_code: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,10 +49,11 @@ enum Focus {
 }
 
 impl GameDispatcher {
-    pub fn new(context: &Context) -> Self {
+    pub fn new(context: &Context, connection: ClientConnection) -> Self {
         const TURN_BUTTON_SIZE: vec2<f32> = vec2(50.0, 50.0);
         Self {
             context: context.clone(),
+            connection,
 
             final_texture: geng_utils::texture::new_texture(context.geng.ugli(), SCREEN_SIZE),
             framebuffer_size: vec2(1, 1),
@@ -66,6 +73,7 @@ impl GameDispatcher {
             client_state: DispatcherStateClient {
                 focus: Focus::Whole,
                 active_side: DispatcherViewSide::Back,
+                login_code: vec![],
             },
             state: DispatcherState::new(),
             items_layout: HashMap::new(),
@@ -151,9 +159,17 @@ impl GameDispatcher {
 
         if draw_monitor {
             // Monitor
-            geng_utils::texture::DrawTexture::new(&sprites.workspace)
-                .fit(self.monitor_inside, vec2(0.5, 0.5))
-                .draw(&self.camera, &self.context.geng, framebuffer);
+            if self.state.monitor_unlocked {
+                // Workspace
+                geng_utils::texture::DrawTexture::new(&sprites.workspace)
+                    .fit(self.monitor_inside, vec2(0.5, 0.5))
+                    .draw(&self.camera, &self.context.geng, framebuffer);
+            } else {
+                // Login
+                geng_utils::texture::DrawTexture::new(&sprites.login_screen)
+                    .fit(self.monitor_inside, vec2(0.5, 0.5))
+                    .draw(&self.camera, &self.context.geng, framebuffer);
+            }
         }
     }
 
@@ -207,6 +223,37 @@ impl GameDispatcher {
         self.camera_center.target = center;
         self.client_state.focus = focus;
     }
+
+    fn press_digit(&mut self, digit: usize) {
+        if self.client_state.focus == Focus::Monitor
+            && !self.state.monitor_unlocked
+            && self.client_state.login_code.len() < 3
+        {
+            self.client_state.login_code.push(digit);
+        }
+    }
+
+    fn press_backspace(&mut self) {
+        if self.client_state.focus == Focus::Monitor && !self.state.monitor_unlocked {
+            self.client_state.login_code.pop();
+        }
+    }
+
+    fn press_enter(&mut self) {
+        if self.client_state.focus == Focus::Monitor && !self.state.monitor_unlocked {
+            if self.client_state.login_code == vec![6, 6, 6] {
+                self.unlock_monitor();
+            } else {
+                // TODO
+            }
+        }
+    }
+
+    fn unlock_monitor(&mut self) {
+        self.state.monitor_unlocked = true;
+        self.connection
+            .send(ClientMessage::SyncDispatcherState(self.state.clone()));
+    }
 }
 
 impl geng::State for GameDispatcher {
@@ -231,13 +278,26 @@ impl geng::State for GameDispatcher {
             } => {
                 self.cursor_press();
             }
-            geng::Event::KeyPress {
-                key: geng::Key::Escape,
-            } => {
-                if let Focus::Monitor = self.client_state.focus {
-                    self.change_focus(Focus::Whole);
+            geng::Event::KeyPress { key } => match key {
+                geng::Key::Escape => {
+                    if let Focus::Monitor = self.client_state.focus {
+                        self.change_focus(Focus::Whole);
+                    }
                 }
-            }
+                geng::Key::Backspace => self.press_backspace(),
+                geng::Key::Enter => self.press_enter(),
+                geng::Key::Digit0 => self.press_digit(0),
+                geng::Key::Digit1 => self.press_digit(1),
+                geng::Key::Digit2 => self.press_digit(2),
+                geng::Key::Digit3 => self.press_digit(3),
+                geng::Key::Digit4 => self.press_digit(4),
+                geng::Key::Digit5 => self.press_digit(5),
+                geng::Key::Digit6 => self.press_digit(6),
+                geng::Key::Digit7 => self.press_digit(7),
+                geng::Key::Digit8 => self.press_digit(8),
+                geng::Key::Digit9 => self.press_digit(9),
+                _ => {}
+            },
             _ => (),
         }
     }

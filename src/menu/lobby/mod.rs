@@ -57,13 +57,15 @@ impl Lobby {
             ServerMessage::StartGame(game_role) => {
                 log::info!("Starting game as {:?}", game_role);
                 let state: Box<dyn geng::State> = match game_role {
-                    GameRole::Dispatcher => {
-                        Box::new(crate::game::GameDispatcher::new(&self.context))
-                    }
+                    GameRole::Dispatcher => Box::new(crate::game::GameDispatcher::new(
+                        &self.context,
+                        self.state.connection.clone(),
+                    )),
                     GameRole::Solver => Box::new(crate::game::GameSolver::new(&self.context)),
                 };
                 self.transition = Some(geng::state::Transition::Switch(state));
             }
+            ServerMessage::SyncDispatcherState(_) | ServerMessage::SyncSolverState(_) => {}
         }
     }
 }

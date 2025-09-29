@@ -13,12 +13,13 @@ pub enum GameRole {
     Solver,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DispatcherState {
     pub door_sign_open: bool,
+    pub monitor_unlocked: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SolverState {
     pub current_level: usize,
     pub levels_completed: usize,
@@ -28,6 +29,7 @@ impl DispatcherState {
     pub fn new() -> Self {
         Self {
             door_sign_open: false,
+            monitor_unlocked: false,
         }
     }
 }
