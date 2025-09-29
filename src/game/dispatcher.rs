@@ -116,6 +116,10 @@ impl GameDispatcher {
                 }
                 DispatcherItem::Table => &sprites.table,
                 DispatcherItem::Monitor => &sprites.monitor,
+                DispatcherItem::RealMouse => &sprites.real_mouse,
+                DispatcherItem::Cactus => &sprites.cactus,
+                DispatcherItem::Book => &sprites.book,
+                DispatcherItem::TheSock => &sprites.the_sock,
             };
             let size = positioning
                 .size
@@ -319,6 +323,10 @@ impl DispatcherItem {
             DispatcherItem::DoorSign => true,
             DispatcherItem::Table => false,
             DispatcherItem::Monitor => true,
+            DispatcherItem::RealMouse => true,
+            DispatcherItem::Cactus => true,
+            DispatcherItem::Book => true,
+            DispatcherItem::TheSock => true,
         }
     }
 }

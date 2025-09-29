@@ -10,10 +10,17 @@ pub struct DispatcherAssets {
 pub struct DispatcherSprites {
     pub sign_open: Rc<PixelTexture>,
     pub sign_closed: Rc<PixelTexture>,
+
     pub table: Rc<PixelTexture>,
     pub monitor: Rc<PixelTexture>,
+    pub cactus: Rc<PixelTexture>,
+    pub real_mouse: Rc<PixelTexture>,
+    pub book: Rc<PixelTexture>,
+    pub the_sock: Rc<PixelTexture>,
+
     pub arrow_left: Rc<PixelTexture>,
     pub arrow_right: Rc<PixelTexture>,
+
     pub user_icon: Rc<PixelTexture>,
     pub login_screen: Rc<PixelTexture>,
     pub workspace: Rc<PixelTexture>,
@@ -47,6 +54,10 @@ pub enum DispatcherItem {
     DoorSign,
     Table,
     Monitor,
+    RealMouse,
+    Cactus,
+    Book,
+    TheSock,
 }
 
 /// Positioning in screen-space with fixed 1920x1080 resolution.
