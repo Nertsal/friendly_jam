@@ -2,7 +2,7 @@ use super::*;
 
 use crate::{assets::*, model::DispatcherState};
 
-use geng_utils::conversions::Vec2RealConversions;
+use geng_utils::{conversions::Vec2RealConversions, interpolation::SecondOrderState};
 
 const SCREEN_SIZE: vec2<usize> = vec2(1920, 1080);
 
@@ -14,6 +14,9 @@ pub struct GameDispatcher {
     screen: Aabb2<f32>,
     /// Default scaling from texture to SCREEN_SIZE.
     texture_scaling: f32,
+    camera: Camera2d,
+    camera_fov: SecondOrderState<f32>,
+    camera_center: SecondOrderState<vec2<f32>>,
 
     cursor_position_raw: vec2<f64>,
     cursor_position_game: vec2<f32>,
@@ -21,13 +24,21 @@ pub struct GameDispatcher {
     client_state: DispatcherStateClient,
     state: DispatcherState,
     items_layout: HashMap<(DispatcherViewSide, usize), Aabb2<f32>>,
+    monitor: Aabb2<f32>,
 
     turn_left: Aabb2<f32>,
     turn_right: Aabb2<f32>,
 }
 
 pub struct DispatcherStateClient {
+    focus: Focus,
     active_side: DispatcherViewSide,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Focus {
+    Whole,
+    Monitor,
 }
 
 impl GameDispatcher {
@@ -40,15 +51,24 @@ impl GameDispatcher {
             framebuffer_size: vec2(1, 1),
             screen: Aabb2::ZERO.extend_positive(vec2(1.0, 1.0)),
             texture_scaling: 1.0,
+            camera: Camera2d {
+                center: SCREEN_SIZE.as_f32() / 2.0,
+                rotation: Angle::ZERO,
+                fov: Camera2dFov::Vertical(SCREEN_SIZE.y as f32),
+            },
+            camera_fov: SecondOrderState::new(1.5, 1.0, 0.0, SCREEN_SIZE.y as f32),
+            camera_center: SecondOrderState::new(1.5, 1.0, 0.0, SCREEN_SIZE.as_f32() / 2.0),
 
             cursor_position_raw: vec2::ZERO,
             cursor_position_game: vec2::ZERO,
 
             client_state: DispatcherStateClient {
+                focus: Focus::Whole,
                 active_side: DispatcherViewSide::Back,
             },
             state: DispatcherState::new(),
             items_layout: HashMap::new(),
+            monitor: Aabb2::ZERO,
 
             turn_left: Aabb2::point(vec2(TURN_BUTTON_SIZE.x / 2.0, SCREEN_SIZE.y as f32 / 2.0))
                 .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
@@ -91,12 +111,21 @@ impl GameDispatcher {
                 .unwrap_or(texture.size().as_f32() * self.texture_scaling);
             let pos = Aabb2::point(positioning.anchor - size * positioning.alignment)
                 .extend_positive(size);
-            let draw = geng_utils::texture::DrawTexture::new(texture).fit(pos, vec2(0.5, 0.5));
+            let mut draw = geng_utils::texture::DrawTexture::new(texture).fit(pos, vec2(0.5, 0.5));
+            if item.is_interactable()
+                && draw.target.contains(self.cursor_position_game)
+                && !(*item == DispatcherItem::Monitor && self.client_state.focus == Focus::Monitor)
+            {
+                draw.target = draw.target.extend_uniform(20.0);
+            }
 
             self.items_layout
                 .insert((self.client_state.active_side, item_index), draw.target);
+            if let DispatcherItem::Monitor = item {
+                self.monitor = draw.target;
+            }
 
-            draw.draw(&geng::PixelPerfectCamera, &self.context.geng, framebuffer);
+            draw.draw(&self.camera, &self.context.geng, framebuffer);
         }
 
         for (texture, mut target) in [
@@ -108,7 +137,7 @@ impl GameDispatcher {
             }
             geng_utils::texture::DrawTexture::new(texture)
                 .fit(target, vec2(0.5, 0.5))
-                .draw(&geng::PixelPerfectCamera, &self.context.geng, framebuffer);
+                .draw(&self.camera, &self.context.geng, framebuffer);
         }
     }
 
@@ -139,26 +168,56 @@ impl GameDispatcher {
                     DispatcherItem::DoorSign => {
                         self.state.door_sign_open = !self.state.door_sign_open
                     }
+                    DispatcherItem::Monitor => {
+                        drop(assets);
+                        self.change_focus(Focus::Monitor);
+                        break;
+                    }
                     _ => {}
                 }
             }
         }
     }
+
+    fn change_focus(&mut self, focus: Focus) {
+        let (fov, center) = match focus {
+            Focus::Whole => (SCREEN_SIZE.y as f32, SCREEN_SIZE.as_f32() / 2.0),
+            Focus::Monitor => (self.monitor.height(), self.monitor.center()),
+        };
+        self.camera_fov.target = fov;
+        self.camera_center.target = center;
+        self.client_state.focus = focus;
+    }
 }
 
 impl geng::State for GameDispatcher {
+    fn update(&mut self, delta_time: f64) {
+        let delta_time = delta_time as f32;
+        self.camera_fov.update(delta_time);
+        self.camera.fov = Camera2dFov::Vertical(self.camera_fov.current);
+        self.camera_center.update(delta_time);
+        self.camera.center = self.camera_center.current;
+    }
+
     fn handle_event(&mut self, event: geng::Event) {
         match event {
             geng::Event::CursorMove { position } => {
                 self.cursor_position_raw = position;
-                self.cursor_position_game = (position.as_f32() - self.screen.bottom_left())
-                    / self.screen.size()
+                let pos = (position.as_f32() - self.screen.bottom_left()) / self.screen.size()
                     * SCREEN_SIZE.as_f32();
+                self.cursor_position_game = self.camera.screen_to_world(SCREEN_SIZE.as_f32(), pos);
             }
             geng::Event::MousePress {
                 button: geng::MouseButton::Left,
             } => {
                 self.cursor_press();
+            }
+            geng::Event::KeyPress {
+                key: geng::Key::Escape,
+            } => {
+                if let Focus::Monitor = self.client_state.focus {
+                    self.change_focus(Focus::Whole);
+                }
             }
             _ => (),
         }
@@ -172,5 +231,15 @@ impl geng::State for GameDispatcher {
             .fit_screen(vec2(0.5, 0.5), framebuffer);
         self.screen = draw.target;
         draw.draw(&geng::PixelPerfectCamera, &self.context.geng, framebuffer);
+    }
+}
+
+impl DispatcherItem {
+    pub fn is_interactable(&self) -> bool {
+        match self {
+            DispatcherItem::DoorSign => true,
+            DispatcherItem::Table => false,
+            DispatcherItem::Monitor => true,
+        }
     }
 }

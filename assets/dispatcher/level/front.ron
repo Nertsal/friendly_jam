@@ -11,8 +11,7 @@
         (
             Monitor,
             (
-                anchor: (0, 0),
-                alignment: (0, 0),
+                anchor: (655, 480),
             ),
         ),
     ],
