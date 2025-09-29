@@ -25,6 +25,7 @@ pub struct GameDispatcher {
     state: DispatcherState,
     items_layout: HashMap<(DispatcherViewSide, usize), Aabb2<f32>>,
     monitor: Aabb2<f32>,
+    monitor_inside: Aabb2<f32>,
 
     turn_left: Aabb2<f32>,
     turn_right: Aabb2<f32>,
@@ -69,6 +70,7 @@ impl GameDispatcher {
             state: DispatcherState::new(),
             items_layout: HashMap::new(),
             monitor: Aabb2::ZERO,
+            monitor_inside: Aabb2::ZERO,
 
             turn_left: Aabb2::point(vec2(TURN_BUTTON_SIZE.x / 2.0, SCREEN_SIZE.y as f32 / 2.0))
                 .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
@@ -94,6 +96,7 @@ impl GameDispatcher {
             .dispatcher
             .level
             .get_side(self.client_state.active_side);
+        let mut draw_monitor = false;
         for (item_index, (item, positioning)) in level.items.iter().enumerate() {
             let texture = match item {
                 DispatcherItem::DoorSign => {
@@ -122,7 +125,13 @@ impl GameDispatcher {
             self.items_layout
                 .insert((self.client_state.active_side, item_index), draw.target);
             if let DispatcherItem::Monitor = item {
+                draw_monitor = true;
                 self.monitor = draw.target;
+                self.monitor_inside = Aabb2::from_corners(
+                    vec2(27.0, -32.0) / vec2(549.0, 513.0) * self.monitor.size(),
+                    vec2(519.0, -311.0) / vec2(549.0, 513.0) * self.monitor.size(),
+                )
+                .translate(self.monitor.top_left());
             }
 
             draw.draw(&self.camera, &self.context.geng, framebuffer);
@@ -137,6 +146,13 @@ impl GameDispatcher {
             }
             geng_utils::texture::DrawTexture::new(texture)
                 .fit(target, vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
+
+        if draw_monitor {
+            // Monitor
+            geng_utils::texture::DrawTexture::new(&sprites.workspace)
+                .fit(self.monitor_inside, vec2(0.5, 0.5))
                 .draw(&self.camera, &self.context.geng, framebuffer);
         }
     }
@@ -182,7 +198,10 @@ impl GameDispatcher {
     fn change_focus(&mut self, focus: Focus) {
         let (fov, center) = match focus {
             Focus::Whole => (SCREEN_SIZE.y as f32, SCREEN_SIZE.as_f32() / 2.0),
-            Focus::Monitor => (self.monitor.height(), self.monitor.center()),
+            Focus::Monitor => (
+                self.monitor_inside.height() + 50.0,
+                self.monitor_inside.center() + vec2(0.0, -20.0),
+            ),
         };
         self.camera_fov.target = fov;
         self.camera_center.target = center;

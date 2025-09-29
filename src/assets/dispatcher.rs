@@ -8,12 +8,14 @@ pub struct DispatcherAssets {
 
 #[derive(geng::asset::Load)]
 pub struct DispatcherSprites {
-    pub sign_open: PixelTexture,
-    pub sign_closed: PixelTexture,
-    pub table: PixelTexture,
-    pub monitor: PixelTexture,
-    pub arrow_left: PixelTexture,
-    pub arrow_right: PixelTexture,
+    pub sign_open: Rc<PixelTexture>,
+    pub sign_closed: Rc<PixelTexture>,
+    pub table: Rc<PixelTexture>,
+    pub monitor: Rc<PixelTexture>,
+    pub arrow_left: Rc<PixelTexture>,
+    pub arrow_right: Rc<PixelTexture>,
+    pub workspace: Rc<PixelTexture>,
+    pub workspace_v2: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load, Clone)]
@@ -56,10 +58,6 @@ pub struct DispatcherItemPosition {
 
 fn default_alignment() -> vec2<f32> {
     vec2(0.5, 0.5)
-}
-
-fn default_target() -> Aabb2<f32> {
-    Aabb2::ZERO
 }
 
 impl DispatcherLevel {
