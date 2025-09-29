@@ -24,8 +24,12 @@ pub struct SolverSprites {
 
 #[derive(geng::asset::Load)]
 pub struct SolverPlayerSprites {
+    #[load(list = "0..=1")]
+    pub idle: Vec<Rc<PixelTexture>>,
     #[load(list = "0..=3")]
     pub running: Vec<Rc<PixelTexture>>,
+    #[load(list = "0..=1")]
+    pub jump: Vec<Rc<PixelTexture>>,
 }
 
 #[derive(geng::asset::Load, Serialize, Deserialize)]

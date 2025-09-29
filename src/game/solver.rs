@@ -161,26 +161,31 @@ impl GameSolver {
         .fit_height(self.client_state.door_exit.compute_aabb().as_f32(), 1.0)
         .draw(&self.camera, &self.context.geng, framebuffer);
 
-        // self.context.geng.draw2d().quad(
-        //     framebuffer,
-        //     &self.camera,
-        //     self.client_state.player.collider.compute_aabb().as_f32(),
-        //     Rgba::RED,
-        // );
         let player = &self.client_state.player;
-        let animation = match player.animation_state() {
-            PlayerAnimationState::Idle => vec![assets.solver.sprites.player.running[0].clone()],
-            PlayerAnimationState::Running => assets.solver.sprites.player.running.clone(),
-            PlayerAnimationState::Jumping => vec![assets.solver.sprites.player.running[0].clone()],
+        let animation = |frames: &[Rc<crate::assets::PixelTexture>], frame_time: f32| {
+            let frame_time = r32(frame_time);
+            let frame = (player.animation_time / frame_time)
+                .as_f32()
+                .max(0.0)
+                .floor() as usize
+                % frames.len();
+            frames[frame].clone()
         };
-        let frame_time = r32(0.1);
-        let frame = (player.animation_time / frame_time)
-            .as_f32()
-            .max(0.0)
-            .floor() as usize
-            % animation.len();
+
+        let texture = match player.animation_state() {
+            PlayerAnimationState::Idle => animation(&assets.solver.sprites.player.idle, 0.5),
+            PlayerAnimationState::Running => animation(&assets.solver.sprites.player.running, 0.1),
+            PlayerAnimationState::Jumping => {
+                let sprites = &assets.solver.sprites.player.jump;
+                if player.velocity.y > FCoord::ZERO {
+                    sprites[0].clone()
+                } else {
+                    sprites[1].clone()
+                }
+            }
+        };
         let flip = !player.facing_left;
-        geng_utils::texture::DrawTexture::new(&animation[frame])
+        geng_utils::texture::DrawTexture::new(&texture)
             .transformed(mat3::scale(vec2(if flip { -1.0 } else { 1.0 }, 1.0)))
             .fit_width(player.collider.compute_aabb().as_f32(), 0.0)
             .draw(&self.camera, &self.context.geng, framebuffer);
