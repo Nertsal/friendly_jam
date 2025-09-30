@@ -4,6 +4,7 @@ use crate::{
     assets::*,
     interop::{ClientConnection, ClientMessage},
     model::DispatcherState,
+    ui::layout::AreaOps,
 };
 
 use geng_utils::{conversions::Vec2RealConversions, interpolation::SecondOrderState};
@@ -31,6 +32,7 @@ pub struct GameDispatcher {
     items_layout: HashMap<(DispatcherViewSide, usize), Aabb2<f32>>,
     monitor: Aabb2<f32>,
     monitor_inside: Aabb2<f32>,
+    login_code: Vec<Aabb2<f32>>,
 
     turn_left: Aabb2<f32>,
     turn_right: Aabb2<f32>,
@@ -79,6 +81,7 @@ impl GameDispatcher {
             items_layout: HashMap::new(),
             monitor: Aabb2::ZERO,
             monitor_inside: Aabb2::ZERO,
+            login_code: vec![],
 
             turn_left: Aabb2::point(vec2(TURN_BUTTON_SIZE.x / 2.0, SCREEN_SIZE.y as f32 / 2.0))
                 .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
@@ -143,7 +146,22 @@ impl GameDispatcher {
                     vec2(27.0, -32.0) / vec2(549.0, 513.0) * self.monitor.size(),
                     vec2(519.0, -311.0) / vec2(549.0, 513.0) * self.monitor.size(),
                 )
-                .translate(self.monitor.top_left());
+                .translate(self.monitor.top_left())
+                .fit_aabb(sprites.login_screen.size().as_f32(), vec2(0.5, 0.5));
+
+                let digit = |a: vec2<usize>, b: vec2<usize>| {
+                    let size = vec2(1045.0, 685.0);
+                    Aabb2::from_corners(
+                        a.as_f32() * vec2(1.0, -1.0) / size * self.monitor_inside.size(),
+                        b.as_f32() * vec2(1.0, -1.0) / size * self.monitor_inside.size(),
+                    )
+                    .translate(self.monitor_inside.top_left())
+                };
+                self.login_code = vec![
+                    digit(vec2(445, 440), vec2(482, 487)),
+                    digit(vec2(518, 432), vec2(561, 484)),
+                    digit(vec2(586, 435), vec2(618, 482)),
+                ];
             }
 
             draw.draw(&self.camera, &self.context.geng, framebuffer);
@@ -173,6 +191,19 @@ impl GameDispatcher {
                 geng_utils::texture::DrawTexture::new(&sprites.login_screen)
                     .fit(self.monitor_inside, vec2(0.5, 0.5))
                     .draw(&self.camera, &self.context.geng, framebuffer);
+
+                let font = self.context.geng.default_font();
+                for (digit, pos) in self.client_state.login_code.iter().zip(&self.login_code) {
+                    self.context
+                        .geng
+                        .draw2d()
+                        .quad(framebuffer, &self.camera, *pos, Rgba::BLUE);
+                    self.context.geng.draw2d().draw2d(
+                        framebuffer,
+                        &self.camera,
+                        &draw2d::Text::unit(&**font, digit.to_string(), Rgba::WHITE).fit_into(*pos),
+                    );
+                }
             }
         }
     }
