@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     assets::*,
     interop::{ClientConnection, ClientMessage, ServerMessage},
-    model::{DispatcherState, SolverState},
+    model::{DispatcherState, FTime, SolverState},
     ui::layout::AreaOps,
 };
 
@@ -52,6 +52,7 @@ pub struct DispatcherStateClient {
     focus: Focus,
     login_code: Vec<usize>,
     opened_file: Option<usize>,
+    bfb_pressed: Option<FTime>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,6 +88,7 @@ impl GameDispatcher {
                 focus: Focus::Whole,
                 login_code: vec![],
                 opened_file: None,
+                bfb_pressed: None,
             },
             state: DispatcherState::new(),
             solver_state: SolverState::new(),
@@ -146,6 +148,13 @@ impl GameDispatcher {
                         &sprites.button_station_open
                     } else {
                         &sprites.button_station_closed
+                    }
+                }
+                DispatcherItem::Bfb => {
+                    if self.client_state.bfb_pressed.is_some() {
+                        &sprites.button_big_pressed
+                    } else {
+                        &sprites.button_big
                     }
                 }
             };
@@ -225,6 +234,7 @@ impl GameDispatcher {
                         .ui
                         .button_station_inside
                         .contains(self.cursor_position_game))
+                && !(*item == DispatcherItem::Bfb && self.client_state.bfb_pressed.is_some())
             {
                 draw.target = draw.target.extend_uniform(20.0);
             }
@@ -352,22 +362,26 @@ impl GameDispatcher {
                         self.connection
                             .send(ClientMessage::SyncDispatcherState(self.state.clone()));
                     }
+                    DispatcherItem::Bfb => {
+                        if self.client_state.bfb_pressed.is_none() {
+                            self.client_state.bfb_pressed = Some(FTime::ZERO);
+                        }
+                    }
                     _ => {}
                 }
             }
         }
 
-        if let Focus::Monitor = self.client_state.focus {
-            if self.client_state.opened_file.is_none()
-                && let Some(file) = self
-                    .ui
-                    .files
-                    .iter()
-                    .position(|file| file.contains(self.cursor_position_game))
-            {
-                // Open file
-                self.client_state.opened_file = Some(file);
-            }
+        if let Focus::Monitor = self.client_state.focus
+            && self.client_state.opened_file.is_none()
+            && let Some(file) = self
+                .ui
+                .files
+                .iter()
+                .position(|file| file.contains(self.cursor_position_game))
+        {
+            // Open file
+            self.client_state.opened_file = Some(file);
         }
     }
 
@@ -456,6 +470,14 @@ impl geng::State for GameDispatcher {
         self.camera.fov = Camera2dFov::Vertical(self.camera_fov.current);
         self.camera_center.update(delta_time);
         self.camera.center = self.camera_center.current;
+
+        let delta_time = FTime::new(delta_time);
+        if let Some(time) = &mut self.client_state.bfb_pressed {
+            *time += delta_time;
+            if time.as_f32() > 1.0 {
+                panic!("you pressed the red button");
+            }
+        }
     }
 
     fn handle_event(&mut self, event: geng::Event) {
@@ -513,6 +535,7 @@ impl DispatcherItem {
             DispatcherItem::Book => true,
             DispatcherItem::TheSock => true,
             DispatcherItem::ButtonStation => true,
+            DispatcherItem::Bfb => true,
         }
     }
 }
