@@ -4,6 +4,8 @@ use super::*;
 pub struct DispatcherAssets {
     pub sprites: DispatcherSprites,
     pub level: DispatcherLevel,
+    #[load(list = "0..=0")]
+    pub files: Vec<String>,
 }
 
 #[derive(geng::asset::Load)]
@@ -25,6 +27,8 @@ pub struct DispatcherSprites {
     pub login_screen: Rc<PixelTexture>,
     pub workspace: Rc<PixelTexture>,
     pub workspace_v2: Rc<PixelTexture>,
+    pub file: Rc<PixelTexture>,
+    pub file_window: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load, Clone)]
