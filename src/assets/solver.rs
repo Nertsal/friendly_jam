@@ -20,6 +20,7 @@ pub struct SolverSprites {
     pub door_closed: Rc<PixelTexture>,
     pub platform: Rc<PixelTexture>,
     pub player: SolverPlayerSprites,
+    pub level1: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load)]

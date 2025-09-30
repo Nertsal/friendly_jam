@@ -150,6 +150,13 @@ impl GameSolver {
             return;
         };
 
+        // Background
+        if self.state.current_level == 0 {
+            geng_utils::texture::DrawTexture::new(&assets.solver.sprites.level1)
+                .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
+
         // Bounds
         geng_utils::texture::DrawTexture::new(&assets.solver.sprites.level_bounds)
             .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
