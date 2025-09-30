@@ -15,6 +15,7 @@ pub enum GameRole {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DispatcherState {
+    pub button_station_open: bool,
     pub door_sign_open: bool,
     pub monitor_unlocked: bool,
 }
@@ -28,6 +29,7 @@ pub struct SolverState {
 impl DispatcherState {
     pub fn new() -> Self {
         Self {
+            button_station_open: false,
             door_sign_open: false,
             monitor_unlocked: false,
         }

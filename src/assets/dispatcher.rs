@@ -20,6 +20,9 @@ pub struct DispatcherSprites {
     pub book: Rc<PixelTexture>,
     pub the_sock: Rc<PixelTexture>,
 
+    pub button_station_open: Rc<PixelTexture>,
+    pub button_station_closed: Rc<PixelTexture>,
+
     pub arrow_left: Rc<PixelTexture>,
     pub arrow_right: Rc<PixelTexture>,
 
@@ -62,6 +65,7 @@ pub enum DispatcherItem {
     Cactus,
     Book,
     TheSock,
+    ButtonStation,
 }
 
 /// Positioning in screen-space with fixed 1920x1080 resolution.

@@ -41,6 +41,8 @@ struct DispatcherUi {
     files: Vec<Aabb2<f32>>,
     opened_file: Aabb2<f32>,
 
+    button_station_inside: Aabb2<f32>,
+
     turn_left: Aabb2<f32>,
     turn_right: Aabb2<f32>,
 }
@@ -96,6 +98,8 @@ impl GameDispatcher {
                 files: vec![],
                 opened_file: Aabb2::ZERO,
 
+                button_station_inside: Aabb2::ZERO,
+
                 turn_left: Aabb2::point(vec2(TURN_BUTTON_SIZE.x / 2.0, SCREEN_SIZE.y as f32 / 2.0))
                     .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
                 turn_right: Aabb2::point(vec2(
@@ -137,6 +141,13 @@ impl GameDispatcher {
                 DispatcherItem::Cactus => &sprites.cactus,
                 DispatcherItem::Book => &sprites.book,
                 DispatcherItem::TheSock => &sprites.the_sock,
+                DispatcherItem::ButtonStation => {
+                    if self.state.button_station_open {
+                        &sprites.button_station_open
+                    } else {
+                        &sprites.button_station_closed
+                    }
+                }
             };
             let size = positioning
                 .size
@@ -144,12 +155,6 @@ impl GameDispatcher {
             let pos = Aabb2::point(positioning.anchor - size * positioning.alignment)
                 .extend_positive(size);
             let mut draw = geng_utils::texture::DrawTexture::new(texture).fit(pos, vec2(0.5, 0.5));
-            if item.is_interactable()
-                && draw.target.contains(self.cursor_position_game)
-                && !(*item == DispatcherItem::Monitor && self.client_state.focus == Focus::Monitor)
-            {
-                draw.target = draw.target.extend_uniform(20.0);
-            }
 
             self.ui
                 .items_layout
@@ -203,6 +208,26 @@ impl GameDispatcher {
                         .translate(self.ui.monitor_inside.top_left());
             }
 
+            if let DispatcherItem::ButtonStation = item {
+                let size = sprites.button_station_closed.size().as_f32();
+                self.ui.button_station_inside = draw
+                    .target
+                    .align_aabb(size, vec2(1.0, 1.0))
+                    .extend_uniform(-size.x * 0.1);
+            }
+
+            if item.is_interactable()
+                && draw.target.contains(self.cursor_position_game)
+                && !(*item == DispatcherItem::Monitor && self.client_state.focus == Focus::Monitor)
+                && !(*item == DispatcherItem::ButtonStation
+                    && self.state.button_station_open
+                    && self
+                        .ui
+                        .button_station_inside
+                        .contains(self.cursor_position_game))
+            {
+                draw.target = draw.target.extend_uniform(20.0);
+            }
             draw.draw(&self.camera, &self.context.geng, framebuffer);
         }
 
@@ -307,12 +332,25 @@ impl GameDispatcher {
             if hitbox.contains(self.cursor_position_game) {
                 match item {
                     DispatcherItem::DoorSign => {
-                        self.state.door_sign_open = !self.state.door_sign_open
+                        self.state.door_sign_open = !self.state.door_sign_open;
+                        self.connection
+                            .send(ClientMessage::SyncDispatcherState(self.state.clone()));
                     }
                     DispatcherItem::Monitor => {
                         drop(assets);
                         self.change_focus(Focus::Monitor);
                         break;
+                    }
+                    DispatcherItem::ButtonStation
+                        if !self.state.button_station_open
+                            || !self
+                                .ui
+                                .button_station_inside
+                                .contains(self.cursor_position_game) =>
+                    {
+                        self.state.button_station_open = !self.state.button_station_open;
+                        self.connection
+                            .send(ClientMessage::SyncDispatcherState(self.state.clone()));
                     }
                     _ => {}
                 }
@@ -474,6 +512,7 @@ impl DispatcherItem {
             DispatcherItem::Cactus => true,
             DispatcherItem::Book => true,
             DispatcherItem::TheSock => true,
+            DispatcherItem::ButtonStation => true,
         }
     }
 }

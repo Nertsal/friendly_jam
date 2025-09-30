@@ -1,4 +1,12 @@
 #![enable(implicit_some)]
 (
-    items: [],
+    items: [
+        (
+            ButtonStation,
+            (
+                anchor: (1320, 950),
+                alignment: (1, 1),
+            ),
+        ),
+    ],
 )
