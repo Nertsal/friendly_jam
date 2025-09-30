@@ -28,6 +28,6 @@ void main() {
     if (alpha < 0.5) {
         discard;
     }
-    gl_FragColor = u_color;
+    gl_FragColor = vec4(u_color.rgb * alpha, u_color.a);
 }
 #endif

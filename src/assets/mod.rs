@@ -16,7 +16,6 @@ pub struct Assets {
     pub atlas: SpritesAtlas,
     pub shaders: ShaderAssets,
     pub palette: Palette,
-    pub sprites: SpriteAssets,
     pub dispatcher: DispatcherAssets,
     pub solver: SolverAssets,
     #[load(path = "default.ttf")]
