@@ -33,8 +33,14 @@ pub struct Palette {
 
 #[derive(geng::asset::Load)]
 pub struct SoundAssets {
+    #[load(ext = "mp3", options(looped = "true"))]
+    pub music: Rc<geng::Sound>,
     pub click: Rc<geng::Sound>,
     pub hover: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub mouse: Rc<geng::Sound>,
+    // pub cactus: Rc<geng::Sound>,
+    // pub the_sock: Rc<geng::Sound>,
 }
 
 #[derive(geng::asset::Load)]

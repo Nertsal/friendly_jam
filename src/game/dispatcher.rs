@@ -64,6 +64,10 @@ enum Focus {
 
 impl GameDispatcher {
     pub fn new(context: &Context, connection: ClientConnection) -> Self {
+        let assets = context.assets.get();
+        let mut fx = assets.sounds.music.play();
+        fx.set_volume(0.5);
+
         const TURN_BUTTON_SIZE: vec2<f32> = vec2(50.0, 50.0);
         Self {
             context: context.clone(),
@@ -404,6 +408,9 @@ impl GameDispatcher {
                             .buttons_pressed
                             .entry(*item)
                             .or_insert(FTime::ZERO);
+                    }
+                    DispatcherItem::RealMouse => {
+                        assets.sounds.mouse.play();
                     }
                     _ => {}
                 }
