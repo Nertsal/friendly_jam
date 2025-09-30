@@ -385,6 +385,13 @@ impl GameDispatcher {
     }
 
     fn unlock_monitor(&mut self) {
+        // TODO: move to a button press
+        if !self.state.monitor_unlocked && self.solver_state.levels_completed == 0 {
+            self.solver_state.levels_completed += 1;
+            self.connection
+                .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
+        }
+
         self.state.monitor_unlocked = true;
         self.connection
             .send(ClientMessage::SyncDispatcherState(self.state.clone()));

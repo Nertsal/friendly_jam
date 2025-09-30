@@ -35,12 +35,8 @@ impl Font {
                     .build(),
             ),
             cache_texture: RefCell::new({
-                let mut texture = ugli::Texture2d::new_uninitialized(
-                    manager.ugli(),
-                    vec2(CACHE_SIZE, CACHE_SIZE),
-                );
+                ugli::Texture2d::new_uninitialized(manager.ugli(), vec2(CACHE_SIZE, CACHE_SIZE))
                 // texture.set_filter(ugli::Filter::Nearest);
-                texture
             }),
             geometry: RefCell::new(ugli::VertexBuffer::new_dynamic(manager.ugli(), Vec::new())),
             program: manager

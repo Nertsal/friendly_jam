@@ -61,7 +61,10 @@ impl Lobby {
                         &self.context,
                         self.state.connection.clone(),
                     )),
-                    GameRole::Solver => Box::new(crate::game::GameSolver::new(&self.context)),
+                    GameRole::Solver => Box::new(crate::game::GameSolver::new(
+                        &self.context,
+                        self.state.connection.clone(),
+                    )),
                 };
                 self.transition = Some(geng::state::Transition::Switch(state));
             }

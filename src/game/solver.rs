@@ -1,6 +1,9 @@
 use super::*;
 
-use crate::model::*;
+use crate::{
+    interop::{ClientConnection, ClientMessage, ServerMessage},
+    model::*,
+};
 
 use geng_utils::conversions::*;
 
@@ -9,6 +12,7 @@ const LEVEL_SIZE: vec2<f32> = vec2(16.0, 9.0);
 
 pub struct GameSolver {
     context: Context,
+    connection: ClientConnection,
 
     final_texture: ugli::Texture,
     framebuffer_size: vec2<usize>,
@@ -21,6 +25,7 @@ pub struct GameSolver {
 
     client_state: SolverStateClient,
     state: SolverState,
+    dispatcher_state: DispatcherState,
     camera: Camera2d,
 
     player_control: PlayerControl,
@@ -81,9 +86,10 @@ enum PlayerAnimationState {
 }
 
 impl GameSolver {
-    pub fn new(context: &Context) -> Self {
+    pub fn new(context: &Context, connection: ClientConnection) -> Self {
         let mut game = Self {
             context: context.clone(),
+            connection,
 
             final_texture: geng_utils::texture::new_texture(context.geng.ugli(), SCREEN_SIZE),
             framebuffer_size: vec2(1, 1),
@@ -114,6 +120,7 @@ impl GameSolver {
                 door_exit: Collider::aabb(Aabb2::ZERO),
             },
             state: SolverState::new(),
+            dispatcher_state: DispatcherState::new(),
             camera: Camera2d {
                 center: LEVEL_SIZE / 2.0,
                 rotation: Angle::ZERO,
@@ -201,6 +208,7 @@ impl GameSolver {
         let player = &mut self.client_state.player;
         player.collider.position =
             level.spawnpoint + vec2(r32(0.0), player.collider.compute_aabb().height() / r32(2.0));
+        player.velocity = vec2::ZERO;
     }
 
     fn update_level_colliders(&mut self) {
@@ -303,6 +311,9 @@ impl GameSolver {
         if anim_state != self.client_state.player.animation_state() {
             self.client_state.player.animation_time = FTime::ZERO;
         }
+
+        self.check_transition();
+        self.check_out_of_bounds();
 
         self.player_control.take();
     }
@@ -478,10 +489,48 @@ impl GameSolver {
             .filter_map(|static_col| collider.collide(static_col))
             .max_by_key(|col| col.penetration)
     }
+
+    fn check_transition(&mut self) {
+        let assets = self.context.assets.get();
+        let Some(level) = assets.solver.levels.get(self.state.current_level) else {
+            return;
+        };
+        let player = &self.client_state.player;
+        if self.state.is_exit_open() && player.collider.check(&Collider::aabb(level.transition)) {
+            self.state.current_level += 1;
+            self.connection
+                .send(ClientMessage::SyncSolverState(self.state.clone()));
+            drop(assets);
+            self.player_respawn();
+            self.update_level_colliders();
+        }
+    }
+
+    fn check_out_of_bounds(&mut self) {
+        let player = &self.client_state.player;
+        if player.collider.position.y < r32(-50.0) {
+            self.player_respawn();
+        }
+    }
+
+    fn handle_message(&mut self, message: ServerMessage) {
+        match message {
+            ServerMessage::Ping | ServerMessage::RoomJoined(..) | ServerMessage::StartGame(..) => {}
+            ServerMessage::Error(error) => log::error!("Server error: {error}"),
+            ServerMessage::SyncDispatcherState(dispatcher_state) => {
+                self.dispatcher_state = dispatcher_state
+            }
+            ServerMessage::SyncSolverState(solver_state) => self.state = solver_state,
+        }
+    }
 }
 
 impl geng::State for GameSolver {
     fn update(&mut self, delta_time: f64) {
+        if let Some(Ok(message)) = self.connection.try_recv() {
+            self.handle_message(message);
+        }
+
         let delta_time = FTime::new(delta_time as f32);
 
         {

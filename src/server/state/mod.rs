@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::model::GameRole;
+use crate::model::{DispatcherState, GameRole, SolverState};
 
 use geng::prelude::{rand::prelude::Distribution, *};
 
@@ -37,15 +37,11 @@ pub struct RoomGameState {
 impl RoomGameState {
     pub fn new() -> Self {
         Self {
-            dispatcher: DispatcherState {},
-            solver: SolverState {},
+            dispatcher: DispatcherState::new(),
+            solver: SolverState::new(),
         }
     }
 }
-
-pub struct DispatcherState {}
-
-pub struct SolverState {}
 
 impl Room {
     pub fn new(code: Arc<str>, player: ClientId) -> Self {
@@ -220,11 +216,43 @@ impl ServerState {
                     }
                 }
             }
-            ClientMessage::SyncDispatcherState(state) => {
-                // TODO
+            ClientMessage::SyncDispatcherState(dispatcher_state) => {
+                if let Some(room) = client
+                    .room
+                    .as_ref()
+                    .and_then(|room| self.rooms.get_mut(room))
+                    && let RoomState::Game(state) = &mut room.state
+                {
+                    state.dispatcher = dispatcher_state.clone();
+                    for &id in &room.players {
+                        if client_id != id
+                            && let Some(client) = self.clients.get_mut(&id)
+                        {
+                            client
+                                .sender
+                                .send(ServerMessage::SyncDispatcherState(dispatcher_state.clone()));
+                        }
+                    }
+                }
             }
-            ClientMessage::SyncSolverState(state) => {
-                // TODO
+            ClientMessage::SyncSolverState(solver_state) => {
+                if let Some(room) = client
+                    .room
+                    .as_ref()
+                    .and_then(|room| self.rooms.get_mut(room))
+                    && let RoomState::Game(state) = &mut room.state
+                {
+                    state.solver = solver_state.clone();
+                    for &id in &room.players {
+                        if client_id != id
+                            && let Some(client) = self.clients.get_mut(&id)
+                        {
+                            client
+                                .sender
+                                .send(ServerMessage::SyncSolverState(solver_state.clone()));
+                        }
+                    }
+                }
             }
         }
     }
