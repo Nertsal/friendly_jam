@@ -61,7 +61,7 @@ pub struct DispatcherView {
     pub items: Vec<(DispatcherItem, DispatcherItemPosition)>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum DispatcherItem {
     DoorSign,
     Table,
@@ -72,6 +72,8 @@ pub enum DispatcherItem {
     TheSock,
     ButtonStation,
     Bfb,
+    ButtonSalad,
+    ButtonYellow,
 }
 
 /// Positioning in screen-space with fixed 1920x1080 resolution.

@@ -53,6 +53,7 @@ pub struct DispatcherStateClient {
     login_code: Vec<usize>,
     opened_file: Option<usize>,
     bfb_pressed: Option<FTime>,
+    buttons_pressed: HashMap<DispatcherItem, FTime>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +90,7 @@ impl GameDispatcher {
                 login_code: vec![],
                 opened_file: None,
                 bfb_pressed: None,
+                buttons_pressed: HashMap::new(),
             },
             state: DispatcherState::new(),
             solver_state: SolverState::new(),
@@ -129,6 +131,22 @@ impl GameDispatcher {
             .get_side(self.client_state.active_side);
         let mut draw_monitor = false;
         for (item_index, (item, positioning)) in level.items.iter().enumerate() {
+            let mut color = Rgba::<f32>::WHITE;
+
+            macro_rules! button {
+                ($color:literal) => {{
+                    if !self.state.button_station_open {
+                        continue;
+                    }
+                    color = Rgba::try_from($color).unwrap();
+                    if self.client_state.buttons_pressed.contains_key(item) {
+                        &sprites.button_pressed
+                    } else {
+                        &sprites.button
+                    }
+                }};
+            }
+
             let texture = match item {
                 DispatcherItem::DoorSign => {
                     if self.state.door_sign_open {
@@ -157,13 +175,17 @@ impl GameDispatcher {
                         &sprites.button_big
                     }
                 }
+                DispatcherItem::ButtonSalad => button!("#ECFF00"),
+                DispatcherItem::ButtonYellow => button!("#FFFF00"),
             };
             let size = positioning
                 .size
                 .unwrap_or(texture.size().as_f32() * self.texture_scaling);
             let pos = Aabb2::point(positioning.anchor - size * positioning.alignment)
                 .extend_positive(size);
-            let mut draw = geng_utils::texture::DrawTexture::new(texture).fit(pos, vec2(0.5, 0.5));
+            let mut draw = geng_utils::texture::DrawTexture::new(texture)
+                .colored(color)
+                .fit(pos, vec2(0.5, 0.5));
 
             self.ui
                 .items_layout
@@ -235,9 +257,17 @@ impl GameDispatcher {
                         .button_station_inside
                         .contains(self.cursor_position_game))
                 && !(*item == DispatcherItem::Bfb && self.client_state.bfb_pressed.is_some())
+                && !self.client_state.buttons_pressed.contains_key(item)
             {
-                draw.target = draw.target.extend_uniform(20.0);
+                draw.target = draw.target.extend_uniform(10.0);
             }
+
+            if let DispatcherItem::ButtonSalad | DispatcherItem::ButtonYellow = item {
+                let mut draw_base = geng_utils::texture::DrawTexture::new(&sprites.button_base);
+                draw_base.target = draw.target;
+                draw_base.draw(&self.camera, &self.context.geng, framebuffer);
+            }
+
             draw.draw(&self.camera, &self.context.geng, framebuffer);
         }
 
@@ -367,6 +397,14 @@ impl GameDispatcher {
                             self.client_state.bfb_pressed = Some(FTime::ZERO);
                         }
                     }
+                    DispatcherItem::ButtonSalad | DispatcherItem::ButtonYellow
+                        if self.state.button_station_open =>
+                    {
+                        self.client_state
+                            .buttons_pressed
+                            .entry(*item)
+                            .or_insert(FTime::ZERO);
+                    }
                     _ => {}
                 }
             }
@@ -437,13 +475,6 @@ impl GameDispatcher {
     }
 
     fn unlock_monitor(&mut self) {
-        // TODO: move to a button press
-        if !self.state.monitor_unlocked && self.solver_state.levels_completed == 0 {
-            self.solver_state.levels_completed += 1;
-            self.connection
-                .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
-        }
-
         self.state.monitor_unlocked = true;
         self.connection
             .send(ClientMessage::SyncDispatcherState(self.state.clone()));
@@ -475,9 +506,32 @@ impl geng::State for GameDispatcher {
         if let Some(time) = &mut self.client_state.bfb_pressed {
             *time += delta_time;
             if time.as_f32() > 1.0 {
-                panic!("you pressed the red button");
+                panic!("ты нажал на большую красную кнопку");
             }
         }
+        for (item, time) in &mut self.client_state.buttons_pressed {
+            *time += delta_time;
+            if time.as_f32() > 1.0 {
+                match item {
+                    DispatcherItem::ButtonSalad => {
+                        if self.state.monitor_unlocked && self.solver_state.levels_completed == 0 {
+                            panic!("ты нажал на салатовую кнопку")
+                        }
+                    }
+                    DispatcherItem::ButtonYellow => {
+                        if self.state.monitor_unlocked && self.solver_state.levels_completed == 0 {
+                            self.solver_state.levels_completed += 1;
+                            self.connection
+                                .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        self.client_state
+            .buttons_pressed
+            .retain(|_, time| time.as_f32() < 1.0);
     }
 
     fn handle_event(&mut self, event: geng::Event) {
@@ -535,7 +589,9 @@ impl DispatcherItem {
             DispatcherItem::Book => true,
             DispatcherItem::TheSock => true,
             DispatcherItem::ButtonStation => true,
-            DispatcherItem::Bfb => true,
+            DispatcherItem::Bfb | DispatcherItem::ButtonSalad | DispatcherItem::ButtonYellow => {
+                true
+            }
         }
     }
 }

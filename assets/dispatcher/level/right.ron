@@ -14,5 +14,17 @@
                 anchor: (1560, 400),
             ),
         ),
+        (
+            ButtonSalad,
+            (
+                anchor: (770, 800),
+            ),
+        ),
+        (
+            ButtonYellow,
+            (
+                anchor: (960, 800),
+            ),
+        ),
     ],
 )
