@@ -30,6 +30,7 @@ pub struct SpriteAssets {}
 #[load(serde = "ron")]
 pub struct Palette {
     pub background: Color,
+    pub text: Color,
 }
 
 #[derive(geng::asset::Load)]

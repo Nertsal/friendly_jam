@@ -6,6 +6,7 @@ pub struct DispatcherAssets {
     pub level: DispatcherLevel,
     #[load(list = "0..=1")]
     pub files: Vec<String>,
+    pub book_text: String,
 }
 
 #[derive(geng::asset::Load)]
@@ -18,6 +19,7 @@ pub struct DispatcherSprites {
     pub cactus: Rc<PixelTexture>,
     pub real_mouse: Rc<PixelTexture>,
     pub book: Rc<PixelTexture>,
+    pub book_open: Rc<PixelTexture>,
     pub the_sock: Rc<PixelTexture>,
 
     pub button_station_open: Rc<PixelTexture>,

@@ -60,6 +60,7 @@ pub struct DispatcherStateClient {
 enum Focus {
     Whole,
     Monitor,
+    Book,
 }
 
 impl GameDispatcher {
@@ -343,10 +344,32 @@ impl GameDispatcher {
                     self.context.geng.draw2d().draw2d(
                         framebuffer,
                         &self.camera,
-                        &draw2d::Text::unit(&**font, digit.to_string(), Rgba::WHITE).fit_into(*pos),
+                        &draw2d::Text::unit(&**font, digit.to_string(), assets.palette.text)
+                            .fit_into(*pos),
                     );
                 }
             }
+        }
+
+        // Book
+        if let Focus::Book = self.client_state.focus {
+            let book_pos =
+                Aabb2::point(vec2(1280.0, 480.0)).extend_symmetric(vec2(1063.0, 742.0) / 2.0);
+            let draw = geng_utils::texture::DrawTexture::new(&sprites.book_open)
+                .fit(book_pos, vec2(0.5, 0.5));
+            let book_pos = draw.target;
+            draw.draw(&self.camera, &self.context.geng, framebuffer);
+
+            let book_pos = Aabb2::from_corners(vec2(100.0, -180.0), vec2(460.0, -630.0))
+                .translate(book_pos.top_left());
+
+            let font = self.context.geng.default_font();
+            self.context.geng.draw2d().draw2d(
+                framebuffer,
+                &self.camera,
+                &draw2d::Text::unit(&**font, &assets.dispatcher.book_text, assets.palette.text)
+                    .fit_into(book_pos),
+            );
         }
     }
 
@@ -412,6 +435,11 @@ impl GameDispatcher {
                     DispatcherItem::RealMouse => {
                         assets.sounds.mouse.play();
                     }
+                    DispatcherItem::Book => {
+                        drop(assets);
+                        self.change_focus(Focus::Book);
+                        break;
+                    }
                     _ => {}
                 }
             }
@@ -435,7 +463,7 @@ impl GameDispatcher {
         }
 
         let (fov, center) = match focus {
-            Focus::Whole => (SCREEN_SIZE.y as f32, SCREEN_SIZE.as_f32() / 2.0),
+            Focus::Whole | Focus::Book => (SCREEN_SIZE.y as f32, SCREEN_SIZE.as_f32() / 2.0),
             Focus::Monitor => (
                 self.ui.monitor_inside.height() + 50.0,
                 self.ui.monitor_inside.center() + vec2(0.0, -20.0),
@@ -456,11 +484,17 @@ impl GameDispatcher {
     }
 
     fn press_escape(&mut self) {
-        if let Focus::Monitor = self.client_state.focus {
-            if self.client_state.opened_file.take().is_some() {
-                return;
+        match self.client_state.focus {
+            Focus::Book => {
+                self.change_focus(Focus::Whole);
             }
-            self.change_focus(Focus::Whole);
+            Focus::Monitor => {
+                if self.client_state.opened_file.take().is_some() {
+                    return;
+                }
+                self.change_focus(Focus::Whole);
+            }
+            _ => (),
         }
     }
 
