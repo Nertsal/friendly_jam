@@ -182,6 +182,7 @@ impl GameDispatcher {
                 }
                 DispatcherItem::ButtonSalad => button!("#ECFF00"),
                 DispatcherItem::ButtonYellow => button!("#FFFF00"),
+                DispatcherItem::ButtonGreen => button!("#00FF00"),
             };
             let size = positioning
                 .size
@@ -267,7 +268,10 @@ impl GameDispatcher {
                 draw.target = draw.target.extend_uniform(10.0);
             }
 
-            if let DispatcherItem::ButtonSalad | DispatcherItem::ButtonYellow = item {
+            if let DispatcherItem::ButtonSalad
+            | DispatcherItem::ButtonYellow
+            | DispatcherItem::ButtonGreen = item
+            {
                 let mut draw_base = geng_utils::texture::DrawTexture::new(&sprites.button_base);
                 draw_base.target = draw.target;
                 draw_base.draw(&self.camera, &self.context.geng, framebuffer);
@@ -424,7 +428,9 @@ impl GameDispatcher {
                             self.client_state.bfb_pressed = Some(FTime::ZERO);
                         }
                     }
-                    DispatcherItem::ButtonSalad | DispatcherItem::ButtonYellow
+                    DispatcherItem::ButtonSalad
+                    | DispatcherItem::ButtonYellow
+                    | DispatcherItem::ButtonGreen
                         if self.state.button_station_open =>
                     {
                         self.client_state
@@ -522,7 +528,10 @@ impl GameDispatcher {
 
     fn handle_message(&mut self, message: ServerMessage) {
         match message {
-            ServerMessage::Ping | ServerMessage::RoomJoined(..) | ServerMessage::StartGame(..) => {}
+            ServerMessage::Ping
+            | ServerMessage::RoomJoined(..)
+            | ServerMessage::StartGame(..)
+            | ServerMessage::YourToken(_) => {}
             ServerMessage::Error(error) => log::error!("Server error: {error}"),
             ServerMessage::SyncDispatcherState(dispatcher_state) => self.state = dispatcher_state,
             ServerMessage::SyncSolverState(solver_state) => self.solver_state = solver_state,
@@ -561,6 +570,15 @@ impl geng::State for GameDispatcher {
                     DispatcherItem::ButtonYellow => {
                         if self.state.monitor_unlocked && self.solver_state.levels_completed == 0 {
                             self.solver_state.levels_completed += 1;
+                            self.connection
+                                .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
+                        }
+                    }
+                    DispatcherItem::ButtonGreen => {
+                        if self.solver_state.trashcan_evil
+                            && self.solver_state.levels_completed == 2
+                        {
+                            self.solver_state.trashcan_evil = false;
                             self.connection
                                 .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
                         }
@@ -629,9 +647,10 @@ impl DispatcherItem {
             DispatcherItem::Book => true,
             DispatcherItem::TheSock => true,
             DispatcherItem::ButtonStation => true,
-            DispatcherItem::Bfb | DispatcherItem::ButtonSalad | DispatcherItem::ButtonYellow => {
-                true
-            }
+            DispatcherItem::Bfb
+            | DispatcherItem::ButtonSalad
+            | DispatcherItem::ButtonYellow
+            | DispatcherItem::ButtonGreen => true,
         }
     }
 }

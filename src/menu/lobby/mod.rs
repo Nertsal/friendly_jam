@@ -60,6 +60,9 @@ impl Lobby {
             ServerMessage::Error(error) => {
                 log::error!("Error: {}", error);
             }
+            ServerMessage::YourToken(token) => {
+                preferences::save("usertoken", &token);
+            }
             ServerMessage::RoomJoined(_) => {}
             ServerMessage::StartGame(game_role) => {
                 log::info!("Starting game as {:?}", game_role);

@@ -150,6 +150,8 @@ impl GameSolver {
         if let Some(test) = test {
             game.state.current_level = test;
             game.state.levels_completed = test;
+            game.connection
+                .send(ClientMessage::SyncSolverState(game.state.clone()));
         }
 
         game.reload_level();
@@ -722,7 +724,10 @@ impl GameSolver {
 
     fn handle_message(&mut self, message: ServerMessage) {
         match message {
-            ServerMessage::Ping | ServerMessage::RoomJoined(..) | ServerMessage::StartGame(..) => {}
+            ServerMessage::Ping
+            | ServerMessage::RoomJoined(..)
+            | ServerMessage::StartGame(..)
+            | ServerMessage::YourToken(_) => {}
             ServerMessage::Error(error) => log::error!("Server error: {error}"),
             ServerMessage::SyncDispatcherState(dispatcher_state) => {
                 self.dispatcher_state = dispatcher_state

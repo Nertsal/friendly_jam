@@ -85,17 +85,30 @@ impl geng::State for MainMenu {
                                 .await
                                 .unwrap();
                         connection.send(ClientMessage::CreateRoom);
+                        let mut new_token = None;
                         let room_info = loop {
                             let message = connection.next().await.unwrap().unwrap();
                             match message {
                                 ServerMessage::Ping => connection.send(ClientMessage::Pong),
+                                ServerMessage::YourToken(token) => new_token = Some(token),
                                 ServerMessage::RoomJoined(room_info) => break room_info,
+                                ServerMessage::Error(error) => {
+                                    log::error!("Failed to create a room: {error}");
+                                    return None;
+                                }
                                 _ => {
-                                    log::error!("Failed to create the room");
+                                    log::error!("Failed to create a room");
                                     return None;
                                 }
                             }
                         };
+
+                        if let Some(token) = preferences::load("usertoken") {
+                            connection.send(ClientMessage::Login(token));
+                        } else if let Some(token) = new_token {
+                            preferences::save("usertoken", &token);
+                        }
+
                         Some(
                             crate::menu::lobby::Lobby::new(&context, connection, room_info, test)
                                 .await,
@@ -119,17 +132,30 @@ impl geng::State for MainMenu {
                                 .await
                                 .unwrap();
                         connection.send(ClientMessage::JoinRoom(code));
+                        let mut new_token = None;
                         let room_info = loop {
                             let message = connection.next().await.unwrap().unwrap();
                             match message {
                                 ServerMessage::Ping => connection.send(ClientMessage::Pong),
+                                ServerMessage::YourToken(token) => new_token = Some(token),
                                 ServerMessage::RoomJoined(room_info) => break room_info,
+                                ServerMessage::Error(error) => {
+                                    log::error!("Failed to join the room: {error}");
+                                    return None;
+                                }
                                 _ => {
                                     log::error!("Failed to join the room");
                                     return None;
                                 }
                             }
                         };
+
+                        if let Some(token) = preferences::load("usertoken") {
+                            connection.send(ClientMessage::Login(token));
+                        } else if let Some(token) = new_token {
+                            preferences::save("usertoken", &token);
+                        }
+
                         Some(
                             crate::menu::lobby::Lobby::new(&context, connection, room_info, test)
                                 .await,

@@ -49,7 +49,7 @@ impl Stream for ClientConnection {
 pub enum ServerMessage {
     Ping,
     Error(String),
-    // YourToken(String),
+    YourToken(String),
     RoomJoined(RoomInfo),
     StartGame(GameRole),
     SyncDispatcherState(DispatcherState),
@@ -59,7 +59,7 @@ pub enum ServerMessage {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
     Pong,
-    // Login(String),
+    Login(String),
     CreateRoom,
     JoinRoom(String),
     SelectRole(GameRole),
@@ -70,5 +70,5 @@ pub enum ClientMessage {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RoomInfo {
     pub code: String,
-    pub players: Vec<ClientId>,
+    pub players: usize,
 }

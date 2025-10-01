@@ -2,11 +2,14 @@ use super::*;
 
 use crate::model::{DispatcherState, GameRole, SolverState};
 
-use geng::prelude::{rand::prelude::Distribution, *};
+use geng::prelude::{
+    rand::{distributions::DistString, prelude::Distribution},
+    *,
+};
 
 pub struct Client {
     pub sender: Box<dyn geng::net::Sender<ServerMessage>>,
-    // pub token: String,
+    pub token: String,
     pub room: Option<Arc<str>>,
 }
 
@@ -20,7 +23,7 @@ pub struct ServerState {
 
 pub struct Room {
     pub code: Arc<str>,
-    pub players: Vec<ClientId>,
+    pub players: Vec<(ClientId, String)>,
     pub state: RoomState,
 }
 
@@ -44,10 +47,10 @@ impl RoomGameState {
 }
 
 impl Room {
-    pub fn new(code: Arc<str>, player: ClientId) -> Self {
+    pub fn new(code: Arc<str>) -> Self {
         Self {
             code,
-            players: vec![player],
+            players: vec![],
             state: RoomState::RoleSelection {
                 roles: HashMap::new(),
             },
@@ -57,12 +60,8 @@ impl Room {
     pub fn info(&self) -> RoomInfo {
         RoomInfo {
             code: self.code.to_string(),
-            players: self.players.clone(),
+            players: self.players.len(),
         }
-    }
-
-    pub fn player_join(&mut self, player: ClientId) {
-        self.players.push(player);
     }
 }
 
@@ -91,12 +90,12 @@ impl ServerState {
         self.next_id += 1;
 
         sender.send(ServerMessage::Ping);
-        // let token = rand::distributions::Alphanumeric.sample_string(&mut thread_rng(), 16);
-        // sender.send(ServerMessage::YourToken(token.clone()));
+        let token = rand::distributions::Alphanumeric.sample_string(&mut thread_rng(), 16);
+        sender.send(ServerMessage::YourToken(token.clone()));
 
         let client = Client {
             sender,
-            // token,
+            token,
             room: None,
         };
 
@@ -105,7 +104,18 @@ impl ServerState {
     }
 
     pub fn client_disconnect(&mut self, client_id: ClientId) {
-        let _client = self.clients.remove(&client_id).unwrap();
+        let Some(client) = self.clients.remove(&client_id) else {
+            return;
+        };
+        if let Some(code) = &client.room
+            && let Some(room) = self.rooms.get_mut(code)
+            && let Some(i) = room
+                .players
+                .iter()
+                .position(|(_, token)| *token == client.token)
+        {
+            room.players.remove(i);
+        }
     }
 
     pub fn handle_message(&mut self, client_id: ClientId, message: ClientMessage) {
@@ -119,6 +129,10 @@ impl ServerState {
                 //     state.timer.elapsed().as_secs_f64() as f32
                 // ));
                 client.sender.send(ServerMessage::Ping);
+            }
+            ClientMessage::Login(token) => {
+                client.token = token.clone();
+                client.sender.send(ServerMessage::YourToken(token.clone()));
             }
             ClientMessage::CreateRoom => {
                 match &client.room {
@@ -138,7 +152,8 @@ impl ServerState {
                                 self.rooms.entry(code.clone())
                             {
                                 client.room = Some(code.clone());
-                                let room = Room::new(code, client_id);
+                                let mut room = Room::new(code);
+                                room.players.push((client_id, client.token.clone()));
                                 client.sender.send(ServerMessage::RoomJoined(room.info()));
                                 e.insert(room);
                                 break 'room;
@@ -152,14 +167,35 @@ impl ServerState {
             ClientMessage::JoinRoom(code) => {
                 let code: Arc<str> = code.to_uppercase().into();
                 if let Some(room) = self.rooms.get_mut(&code) {
-                    if room.players.len() < 2 {
-                        room.player_join(client_id);
-                        client.room = Some(code.clone());
-                        client.sender.send(ServerMessage::RoomJoined(room.info()));
-                    } else {
-                        client
-                            .sender
-                            .send(ServerMessage::Error("room already full".into()));
+                    match &room.state {
+                        RoomState::RoleSelection { .. } => {
+                            if room.players.len() < 2 {
+                                room.players.push((client_id, client.token.clone()));
+                                client.room = Some(code.clone());
+                                client.sender.send(ServerMessage::RoomJoined(room.info()));
+                            } else {
+                                client
+                                    .sender
+                                    .send(ServerMessage::Error("room already full".into()));
+                            }
+                        }
+                        RoomState::Game(state) => {
+                            if room.players.iter().any(|(_, token)| *token == client.token) {
+                                // Join back
+                                client.room = Some(code.clone());
+                                client.sender.send(ServerMessage::RoomJoined(room.info()));
+                                client
+                                    .sender
+                                    .send(ServerMessage::SyncSolverState(state.solver.clone()));
+                                client.sender.send(ServerMessage::SyncDispatcherState(
+                                    state.dispatcher.clone(),
+                                ));
+                            } else {
+                                client.sender.send(ServerMessage::Error(
+                                    "cannot join an ongoing game".into(),
+                                ));
+                            }
+                        }
                     }
                 } else {
                     client
@@ -200,7 +236,7 @@ impl ServerState {
 
                         let roles = roles.clone();
                         room.state = RoomState::Game(RoomGameState::new());
-                        for player in &room.players {
+                        for (player, _) in &room.players {
                             if let Some(&role) = roles.get(player)
                                 && let Some(client) = self.clients.get_mut(player)
                             {
@@ -209,7 +245,7 @@ impl ServerState {
                         }
                     } else if self.test && roles.len() == 1 {
                         let role = *roles.values().next().unwrap();
-                        if let Some(client) = self.clients.get_mut(&room.players[0]) {
+                        if let Some(client) = self.clients.get_mut(&room.players[0].0) {
                             room.state = RoomState::Game(RoomGameState::new());
                             client.sender.send(ServerMessage::StartGame(role));
                         }
@@ -224,7 +260,7 @@ impl ServerState {
                     && let RoomState::Game(state) = &mut room.state
                 {
                     state.dispatcher = dispatcher_state.clone();
-                    for &id in &room.players {
+                    for &(id, _) in &room.players {
                         if client_id != id
                             && let Some(client) = self.clients.get_mut(&id)
                         {
@@ -243,7 +279,7 @@ impl ServerState {
                     && let RoomState::Game(state) = &mut room.state
                 {
                     state.solver = solver_state.clone();
-                    for &id in &room.players {
+                    for &(id, _) in &room.players {
                         if client_id != id
                             && let Some(client) = self.clients.get_mut(&id)
                         {
@@ -259,7 +295,7 @@ impl ServerState {
 
     pub fn tick(&mut self) {
         self.rooms.retain(|_code, room| {
-            room.players.retain(|id| self.clients.contains_key(id));
+            room.players.retain(|(id, _)| self.clients.contains_key(id));
             !room.players.is_empty()
         })
     }
