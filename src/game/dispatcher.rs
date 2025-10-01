@@ -38,6 +38,7 @@ struct DispatcherUi {
     monitor: Aabb2<f32>,
     monitor_inside: Aabb2<f32>,
     login_code: Vec<Aabb2<f32>>,
+    user_icon: Aabb2<f32>,
     files: Vec<Aabb2<f32>>,
     opened_file: Aabb2<f32>,
 
@@ -104,6 +105,7 @@ impl GameDispatcher {
                 monitor: Aabb2::ZERO,
                 monitor_inside: Aabb2::ZERO,
                 login_code: vec![],
+                user_icon: Aabb2::ZERO,
                 files: vec![],
                 opened_file: Aabb2::ZERO,
 
@@ -210,6 +212,9 @@ impl GameDispatcher {
                     pos.as_f32() * vec2(1.0, -1.0) / vec2(1045.0, 685.0)
                         * self.ui.monitor_inside.size()
                 };
+                self.ui.user_icon = Aabb2::point(convert(vec2(520, 320)))
+                    .extend_uniform(30.0)
+                    .translate(self.ui.monitor_inside.top_left());
 
                 let digit = |a: vec2<usize>, b: vec2<usize>| {
                     Aabb2::from_corners(convert(a), convert(b))
@@ -342,6 +347,15 @@ impl GameDispatcher {
                     .fit(self.ui.monitor_inside, vec2(0.5, 0.5))
                     .draw(&self.camera, &self.context.geng, framebuffer);
 
+                // Profile
+                let mut user_icon = self.ui.user_icon;
+                if monitor_focused && user_icon.contains(self.cursor_position_game) {
+                    user_icon = user_icon.extend_uniform(5.0);
+                }
+                geng_utils::texture::DrawTexture::new(&sprites.user_icon)
+                    .fit(user_icon, vec2(0.5, 0.5))
+                    .draw(&self.camera, &self.context.geng, framebuffer);
+
                 // Code
                 let font = self.context.geng.default_font();
                 for (digit, pos) in self.client_state.login_code.iter().zip(&self.ui.login_code) {
@@ -451,15 +465,20 @@ impl GameDispatcher {
             }
         }
 
-        if let Focus::Monitor = self.client_state.focus
-            && let Some(file) = self
-                .ui
-                .files
-                .iter()
-                .position(|file| file.contains(self.cursor_position_game))
-        {
-            // Open file
-            self.client_state.opened_file = Some(file);
+        if let Focus::Monitor = self.client_state.focus {
+            if self.state.monitor_unlocked {
+                if let Some(file) = self
+                    .ui
+                    .files
+                    .iter()
+                    .position(|file| file.contains(self.cursor_position_game))
+                {
+                    // Open file
+                    self.client_state.opened_file = Some(file);
+                }
+            } else if self.ui.user_icon.contains(self.cursor_position_game) {
+                // TODO: smth
+            }
         }
     }
 

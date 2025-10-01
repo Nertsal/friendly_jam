@@ -97,7 +97,9 @@ enum PlayerAnimationState {
 impl GameSolver {
     pub fn new(context: &Context, connection: ClientConnection, test: Option<usize>) -> Self {
         let assets = context.assets.get();
-        assets.sounds.music.play();
+        let mut sfx = assets.sounds.music.play();
+        sfx.set_volume(0.5);
+
         let mut game = Self {
             context: context.clone(),
             connection,
