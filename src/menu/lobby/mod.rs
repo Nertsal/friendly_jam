@@ -18,6 +18,7 @@ pub struct Lobby {
     transition: Option<geng::state::Transition>,
 
     state: LobbyState,
+    test: Option<usize>,
 }
 
 pub struct LobbyState {
@@ -29,7 +30,12 @@ pub struct LobbyState {
 pub struct LobbyUi {}
 
 impl Lobby {
-    pub async fn new(context: &Context, connection: ClientConnection, room_info: RoomInfo) -> Self {
+    pub async fn new(
+        context: &Context,
+        connection: ClientConnection,
+        room_info: RoomInfo,
+        test: Option<usize>,
+    ) -> Self {
         log::info!("Joined room {}", room_info.code);
         Self {
             context: context.clone(),
@@ -44,6 +50,7 @@ impl Lobby {
                 room_info,
                 selected_role: None,
             },
+            test,
         }
     }
 
@@ -64,6 +71,7 @@ impl Lobby {
                     GameRole::Solver => Box::new(crate::game::GameSolver::new(
                         &self.context,
                         self.state.connection.clone(),
+                        self.test,
                     )),
                 };
                 self.transition = Some(geng::state::Transition::Switch(state));

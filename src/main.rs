@@ -24,7 +24,7 @@ struct Args {
     #[clap(flatten)]
     pub geng: geng::CliArgs,
     #[clap(long)]
-    pub test: bool,
+    pub test: Option<usize>,
 }
 
 fn main() {
@@ -74,7 +74,7 @@ fn main() {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let server = geng::net::Server::new(
-                server::App::new(args.test),
+                server::App::new(args.test.is_some()),
                 args.server.as_deref().unwrap(),
             );
             let server_handle = server.handle();
@@ -84,7 +84,7 @@ fn main() {
     } else {
         #[cfg(not(target_arch = "wasm32"))]
         let server = if let Some(addr) = &args.server {
-            let server = geng::net::Server::new(server::App::new(args.test), addr);
+            let server = geng::net::Server::new(server::App::new(args.test.is_some()), addr);
             let server_handle = server.handle();
             let server_thread = std::thread::spawn(move || {
                 server.run();
@@ -101,7 +101,7 @@ fn main() {
                     .await
                     .unwrap();
             let context = Context::new(geng.clone(), Rc::new(assets));
-            let state = menu::main::MainMenu::new(&context, args.connect).await;
+            let state = menu::main::MainMenu::new(&context, args.connect, args.test).await;
             geng.run_state(state).await;
         });
 

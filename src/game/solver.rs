@@ -36,6 +36,7 @@ struct SolverStateClient {
     level_static_colliders: Vec<Collider>,
     door_entrance: Collider,
     door_exit: Collider,
+    platforms: Vec<Collider>,
 }
 
 struct PlayerControl {
@@ -86,7 +87,7 @@ enum PlayerAnimationState {
 }
 
 impl GameSolver {
-    pub fn new(context: &Context, connection: ClientConnection) -> Self {
+    pub fn new(context: &Context, connection: ClientConnection, test: Option<usize>) -> Self {
         let assets = context.assets.get();
         assets.sounds.music.play();
         let mut game = Self {
@@ -120,6 +121,7 @@ impl GameSolver {
                 level_static_colliders: Vec::new(),
                 door_entrance: Collider::aabb(Aabb2::ZERO),
                 door_exit: Collider::aabb(Aabb2::ZERO),
+                platforms: Vec::new(),
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -135,6 +137,12 @@ impl GameSolver {
 
             player_control: PlayerControl::default(),
         };
+
+        if let Some(test) = test {
+            game.state.current_level = test;
+            game.state.levels_completed = test;
+        }
+
         game.player_respawn();
         game.update_level_colliders();
         game
@@ -176,6 +184,13 @@ impl GameSolver {
         })
         .fit_height(self.client_state.door_exit.compute_aabb().as_f32(), 1.0)
         .draw(&self.camera, &self.context.geng, framebuffer);
+
+        // Platforms
+        for platform in &self.client_state.platforms {
+            geng_utils::texture::DrawTexture::new(&assets.solver.sprites.platform)
+                .fit_width(platform.compute_aabb().as_f32(), 1.0)
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
 
         let player = &self.client_state.player;
         let animation = |frames: &[Rc<crate::assets::PixelTexture>], frame_time: f32| {
@@ -278,6 +293,24 @@ impl GameSolver {
                 .extend_up(door_height)
                 .extend_left(door_width),
         );
+
+        // Platforms
+        let platform_size = assets.solver.sprites.platform.size().as_f32();
+        self.client_state.platforms = level
+            .platforms
+            .iter()
+            .map(|platform| {
+                let size = vec2(
+                    platform.width,
+                    platform.width / platform_size.aspect().as_r32(),
+                );
+                Collider::aabb(
+                    Aabb2::point(platform.pos)
+                        .extend_symmetric(vec2(size.x, r32(0.0) / r32(2.0)))
+                        .extend_down(size.y),
+                )
+            })
+            .collect();
     }
 
     fn update_player(&mut self, delta_time: FTime) {
@@ -442,7 +475,7 @@ impl GameSolver {
         if update_state {
             let collider = player.feet_collider();
 
-            if self.check_collision(&collider).is_some() {
+            if self.check_ground_collision(&collider).is_some() {
                 let player = &mut self.client_state.player;
                 player.state = PlayerState::Grounded;
                 player.coyote_time = Some(rules.coyote_time);
@@ -468,22 +501,35 @@ impl GameSolver {
         let player = &mut self.client_state.player;
         player.collider.position += player.velocity * delta_time;
 
-        let fix_collision = |player: &mut Player, other: &Collider| {
+        let fix_collision = |player: &mut Player, collision: &Collision| {
+            player.collider.position -= collision.normal * collision.penetration;
+            player.velocity -= collision.normal * vec2::dot(player.velocity, collision.normal);
+        };
+        let collide_with = |player: &mut Player, other: &Collider| {
             if let Some(collision) = player.collider.collide(other) {
-                player.collider.position -= collision.normal * collision.penetration;
-                player.velocity -= collision.normal * vec2::dot(player.velocity, collision.normal);
+                fix_collision(player, &collision);
             }
         };
 
         // Static colliders
         for static_col in &self.client_state.level_static_colliders {
-            fix_collision(player, static_col);
+            collide_with(player, static_col);
         }
 
         // Doors
-        fix_collision(player, &self.client_state.door_entrance);
+        collide_with(player, &self.client_state.door_entrance);
         if !self.state.is_exit_open() {
-            fix_collision(player, &self.client_state.door_exit);
+            collide_with(player, &self.client_state.door_exit);
+        }
+
+        // Platforms
+        if player.velocity.y.as_f32() <= 0.0 {
+            let collider = player.feet_collider();
+            for platform in &self.client_state.platforms {
+                if let Some(collision) = collider.collide(platform) {
+                    fix_collision(player, &collision);
+                }
+            }
         }
     }
 
@@ -491,10 +537,11 @@ impl GameSolver {
         self.player_check_ground();
     }
 
-    fn check_collision(&self, collider: &Collider) -> Option<Collision> {
+    fn check_ground_collision(&self, collider: &Collider) -> Option<Collision> {
         self.client_state
             .level_static_colliders
             .iter()
+            .chain(&self.client_state.platforms)
             .filter_map(|static_col| collider.collide(static_col))
             .max_by_key(|col| col.penetration)
     }
@@ -560,9 +607,15 @@ impl geng::State for GameSolver {
     }
 
     fn handle_event(&mut self, event: geng::Event) {
-        let controls = &self.context.assets.get().solver.controls;
+        let assets = self.context.assets.get();
+        let controls = &assets.solver.controls;
         if geng_utils::key::is_event_press(&event, &controls.jump) {
             self.player_control.jump = true;
+        }
+
+        if let geng::Event::KeyPress { key: geng::Key::F5 } = event {
+            drop(assets);
+            self.update_level_colliders();
         }
     }
 

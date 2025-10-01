@@ -11,5 +11,5 @@
     deceleration_ground: 50.0,
     deceleration_air: 30.0,
     jump_push: 1.0,
-    jump_strength: 10.0,
+    jump_strength: 9.0,
 )

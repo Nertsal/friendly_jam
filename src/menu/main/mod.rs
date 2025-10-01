@@ -17,6 +17,7 @@ pub struct MainMenu {
     util_render: UtilRender,
 
     connect: Option<String>,
+    test: Option<usize>,
     state: MainMenuState,
 }
 
@@ -32,7 +33,7 @@ enum Action {
 pub struct MainMenuUi {}
 
 impl MainMenu {
-    pub async fn new(context: &Context, connect: Option<String>) -> Self {
+    pub async fn new(context: &Context, connect: Option<String>, test: Option<usize>) -> Self {
         Self {
             context: context.clone(),
             ui_context: UiContext::new(context),
@@ -41,6 +42,7 @@ impl MainMenu {
             util_render: UtilRender::new(context.clone()),
 
             connect,
+            test,
             state: MainMenuState { action: None },
         }
     }
@@ -76,6 +78,7 @@ impl geng::State for MainMenu {
                     log::info!("Creating a room...");
                     let context = self.context.clone();
                     let connect = self.connect.clone();
+                    let test = self.test;
                     let future = async move {
                         let mut connection =
                             crate::interop::ClientConnection::connect(&connect.unwrap())
@@ -93,7 +96,10 @@ impl geng::State for MainMenu {
                                 }
                             }
                         };
-                        Some(crate::menu::lobby::Lobby::new(&context, connection, room_info).await)
+                        Some(
+                            crate::menu::lobby::Lobby::new(&context, connection, room_info, test)
+                                .await,
+                        )
                     }
                     .boxed_local();
                     Box::new(LoadingScreen::new(
@@ -106,6 +112,7 @@ impl geng::State for MainMenu {
                     log::info!("Joining room {code}...");
                     let context = self.context.clone();
                     let connect = self.connect.clone();
+                    let test = self.test;
                     let future = async move {
                         let mut connection =
                             crate::interop::ClientConnection::connect(&connect.unwrap())
@@ -123,7 +130,10 @@ impl geng::State for MainMenu {
                                 }
                             }
                         };
-                        Some(crate::menu::lobby::Lobby::new(&context, connection, room_info).await)
+                        Some(
+                            crate::menu::lobby::Lobby::new(&context, connection, room_info, test)
+                                .await,
+                        )
                     }
                     .boxed_local();
                     Box::new(LoadingScreen::new(

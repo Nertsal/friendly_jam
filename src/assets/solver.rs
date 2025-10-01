@@ -66,4 +66,12 @@ pub struct SolverLevel {
     pub door_exit: bool,
     pub spawnpoint: vec2<FCoord>,
     pub transition: Aabb2<FCoord>,
+    #[serde(default)]
+    pub platforms: Vec<Platform>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Platform {
+    pub pos: vec2<FCoord>,
+    pub width: FCoord,
 }
