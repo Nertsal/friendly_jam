@@ -42,6 +42,7 @@ struct SolverStateClient {
     picked_up_item: Option<SolverItem>,
     explosion: Option<(vec2<FCoord>, FTime)>,
     grandson_spin: Option<Angle<FCoord>>,
+    grandpa_drill: Option<FTime>,
 }
 
 struct PlayerControl {
@@ -133,6 +134,7 @@ impl GameSolver {
                 picked_up_item: None,
                 explosion: None,
                 grandson_spin: None,
+                grandpa_drill: None,
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -234,6 +236,14 @@ impl GameSolver {
                 && let Some(spin) = self.client_state.grandson_spin
             {
                 transform *= mat3::rotate(spin.as_f32());
+            }
+            if let SolverItemKind::Grandpa = item.kind
+                && let Some(time) = self.client_state.grandpa_drill
+            {
+                let spin =
+                    Angle::from_degrees(180.0 * crate::util::smoothstep(time.as_f32().min(1.0)));
+                let offset = crate::util::smoothstep((time.as_f32() - 1.0).max(0.0));
+                transform *= mat3::translate(vec2(0.0, -offset * 5.0)) * mat3::rotate(spin);
             }
 
             geng_utils::texture::DrawTexture::new(texture)
@@ -493,7 +503,7 @@ impl GameSolver {
                     if check(Recycle, Grandson) {
                         self.client_state.grandson_spin = Some(Angle::ZERO);
                     } else if check(Recycle, Grandpa) {
-                        //TODO
+                        self.client_state.grandpa_drill = Some(FTime::ZERO);
                     } else if check(Grandpa, Trashcan) {
                         panic!("ДЕДЭНД: вспомни с кем честь имеешь, скорлупа")
                     } else if check(Grandson, Trashcan) {
@@ -742,8 +752,7 @@ impl GameSolver {
             self.connection
                 .send(ClientMessage::SyncSolverState(self.state.clone()));
             drop(assets);
-            self.player_respawn();
-            self.update_level_colliders();
+            self.reload_level();
         }
     }
 
@@ -795,6 +804,19 @@ impl geng::State for GameSolver {
             *spin += Angle::from_degrees(r32(360.0) * delta_time);
             if spin.as_degrees().as_f32() > 360.0 {
                 self.client_state.grandson_spin = None;
+            }
+        }
+        if let Some(time) = &mut self.client_state.grandpa_drill {
+            let t = *time;
+            *time += delta_time;
+            if t.as_f32() <= 1.0 && time.as_f32() > 1.0 {
+                self.client_state.platforms.clear();
+                self.client_state.level_static_colliders.swap_remove(0);
+                if self.state.levels_completed == 2 {
+                    self.state.levels_completed += 1;
+                    self.connection
+                        .send(ClientMessage::SyncSolverState(self.state.clone()));
+                }
             }
         }
 
