@@ -56,8 +56,13 @@ impl Default for Transform {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Collider {
     pub position: vec2<FCoord>,
+    #[serde(default = "default_rotation")]
     pub rotation: Angle<FCoord>,
     pub shape: Shape,
+}
+
+fn default_rotation() -> Angle<FCoord> {
+    Angle::ZERO
 }
 
 impl Collider {

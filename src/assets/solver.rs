@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::model::{FCoord, FTime};
+use crate::model::{Collider, FCoord, FTime};
 
 use geng_utils::key::EventKey;
 
@@ -21,6 +21,8 @@ pub struct SolverSprites {
     pub platform: Rc<PixelTexture>,
     pub player: SolverPlayerSprites,
     pub level1: Rc<PixelTexture>,
+    pub fish: Rc<PixelTexture>,
+    pub cinder_block: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load)]
@@ -39,6 +41,7 @@ pub struct SolverControls {
     pub move_left: Vec<EventKey>,
     pub move_right: Vec<EventKey>,
     pub jump: Vec<EventKey>,
+    pub pickup: Vec<EventKey>,
 }
 
 #[derive(geng::asset::Load, Serialize, Deserialize)]
@@ -68,10 +71,39 @@ pub struct SolverLevel {
     pub transition: Aabb2<FCoord>,
     #[serde(default)]
     pub platforms: Vec<Platform>,
+    #[serde(default)]
+    pub items: Vec<SolverItem>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Platform {
     pub pos: vec2<FCoord>,
     pub width: FCoord,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SolverItem {
+    pub kind: SolverItemKind,
+    #[serde(default)]
+    pub pushable: bool,
+    #[serde(default)]
+    pub can_pickup: bool,
+    #[serde(default)]
+    pub has_gravity: bool,
+    pub collider: Collider,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum SolverItemKind {
+    Fish,
+    CinderBlock,
+}
+
+impl SolverSprites {
+    pub fn item_texture(&self, kind: SolverItemKind) -> &Rc<PixelTexture> {
+        match kind {
+            SolverItemKind::Fish => &self.fish,
+            SolverItemKind::CinderBlock => &self.cinder_block,
+        }
+    }
 }

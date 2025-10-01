@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::{
+    assets::SolverItem,
     interop::{ClientConnection, ClientMessage, ServerMessage},
     model::*,
 };
@@ -37,12 +38,15 @@ struct SolverStateClient {
     door_entrance: Collider,
     door_exit: Collider,
     platforms: Vec<Collider>,
+    items: Vec<SolverItem>,
+    picked_up_item: Option<SolverItem>,
 }
 
 struct PlayerControl {
     pub jump: bool,
     pub hold_jump: bool,
     pub move_dir: vec2<FCoord>,
+    pub pickup: bool,
 }
 
 impl PlayerControl {
@@ -57,6 +61,7 @@ impl Default for PlayerControl {
             jump: false,
             hold_jump: false,
             move_dir: vec2::ZERO,
+            pickup: false,
         }
     }
 }
@@ -122,6 +127,8 @@ impl GameSolver {
                 door_entrance: Collider::aabb(Aabb2::ZERO),
                 door_exit: Collider::aabb(Aabb2::ZERO),
                 platforms: Vec::new(),
+                items: Vec::new(),
+                picked_up_item: None,
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -143,9 +150,23 @@ impl GameSolver {
             game.state.levels_completed = test;
         }
 
-        game.player_respawn();
-        game.update_level_colliders();
+        game.reload_level();
         game
+    }
+
+    fn reload_level(&mut self) {
+        self.player_respawn();
+        self.update_level_colliders();
+        self.reset_items();
+    }
+
+    fn reset_items(&mut self) {
+        let assets = self.context.assets.get();
+        let Some(level) = assets.solver.levels.get(self.state.current_level) else {
+            return;
+        };
+        self.client_state.items = level.items.clone();
+        self.client_state.picked_up_item = None;
     }
 
     fn draw_game(&mut self) {
@@ -155,10 +176,6 @@ impl GameSolver {
         );
         let assets = self.context.assets.get();
         ugli::clear(framebuffer, Some(assets.palette.background), None, None);
-
-        let Some(level) = assets.solver.levels.get(self.state.current_level) else {
-            return;
-        };
 
         // Background
         if self.state.current_level == 0 {
@@ -192,6 +209,15 @@ impl GameSolver {
                 .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
+        // Items
+        for item in &self.client_state.items {
+            let texture = assets.solver.sprites.item_texture(item.kind);
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(item.collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
+
+        // Player
         let player = &self.client_state.player;
         let animation = |frames: &[Rc<crate::assets::PixelTexture>], frame_time: f32| {
             let frame_time = r32(frame_time);
@@ -202,7 +228,6 @@ impl GameSolver {
                 % frames.len();
             frames[frame].clone()
         };
-
         let texture = match player.animation_state() {
             PlayerAnimationState::Idle => animation(&assets.solver.sprites.player.idle, 0.5),
             PlayerAnimationState::Running => animation(&assets.solver.sprites.player.running, 0.1),
@@ -220,6 +245,22 @@ impl GameSolver {
             .transformed(mat3::scale(vec2(if flip { -1.0 } else { 1.0 }, 1.0)))
             .fit_width(player.collider.compute_aabb().as_f32(), 0.0)
             .draw(&self.camera, &self.context.geng, framebuffer);
+
+        // Held item
+        if let Some(item) = &self.client_state.picked_up_item {
+            let texture = assets.solver.sprites.item_texture(item.kind);
+            let mut collider = item.collider.clone();
+            let dir = if self.client_state.player.facing_left {
+                vec2(-1.0, 0.0)
+            } else {
+                vec2(1.0, 0.0)
+            }
+            .as_r32();
+            collider.position = self.client_state.player.collider.position + dir * r32(0.5);
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
     }
 
     fn player_respawn(&mut self) {
@@ -313,6 +354,28 @@ impl GameSolver {
             .collect();
     }
 
+    fn update_items(&mut self, delta_time: FTime) {
+        for item in &mut self.client_state.items {
+            if item.has_gravity {
+                let collision = self
+                    .client_state
+                    .level_static_colliders
+                    .iter()
+                    .chain(&self.client_state.platforms)
+                    .filter_map(|static_col| item.collider.collide(static_col))
+                    .max_by_key(|col| col.penetration);
+                match collision {
+                    None => {
+                        item.collider.position += vec2(0.0, -5.0).as_r32() * delta_time;
+                    }
+                    Some(collision) => {
+                        item.collider.position -= collision.normal * collision.penetration;
+                    }
+                }
+            }
+        }
+    }
+
     fn update_player(&mut self, delta_time: FTime) {
         let anim_state = self.client_state.player.animation_state();
 
@@ -341,6 +404,26 @@ impl GameSolver {
 
             // Apply gravity
             state.player.velocity += rules.gravity * delta_time;
+        }
+
+        if self.player_control.pickup {
+            if let Some(mut item) = self.client_state.picked_up_item.take() {
+                // Drop item
+                let dir = if self.client_state.player.facing_left {
+                    vec2(-1.0, 0.0)
+                } else {
+                    vec2(1.0, 0.0)
+                }
+                .as_r32();
+                item.collider.position =
+                    self.client_state.player.collider.position + dir * r32(0.5);
+                self.client_state.items.push(item);
+            } else if let Some(i) = self.client_state.items.iter().position(|item| {
+                item.can_pickup && item.collider.check(&self.client_state.player.collider)
+            }) {
+                // Pick up an item
+                self.client_state.picked_up_item = Some(self.client_state.items.swap_remove(i));
+            }
         }
 
         self.player_variable_jump(delta_time);
@@ -531,6 +614,20 @@ impl GameSolver {
                 }
             }
         }
+
+        // Items
+        for item in &mut self.client_state.items {
+            if item.pushable
+                && let Some(collision) = player.collider.collide(&item.collider)
+            {
+                let offset = collision.normal * collision.penetration;
+                // let velocity_offset =
+                //     collision.normal * vec2::dot(player.velocity, collision.normal);
+                player.collider.position -= offset * r32(0.5);
+                // player.velocity -= velocity_offset * r32(0.5);
+                item.collider.position += vec2::UNIT_X * vec2::dot(vec2::UNIT_X, offset) * r32(0.5);
+            }
+        }
     }
 
     fn player_update_state(&mut self) {
@@ -604,6 +701,7 @@ impl geng::State for GameSolver {
         }
 
         self.update_player(delta_time);
+        self.update_items(delta_time);
     }
 
     fn handle_event(&mut self, event: geng::Event) {
@@ -613,9 +711,13 @@ impl geng::State for GameSolver {
             self.player_control.jump = true;
         }
 
+        if geng_utils::key::is_event_press(&event, &controls.pickup) {
+            self.player_control.pickup = true;
+        }
+
         if let geng::Event::KeyPress { key: geng::Key::F5 } = event {
             drop(assets);
-            self.update_level_colliders();
+            self.reload_level();
         }
     }
 

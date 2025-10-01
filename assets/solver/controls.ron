@@ -2,4 +2,5 @@
     move_left: [Key(ArrowLeft), Key(A)],
     move_right: [Key(ArrowRight), Key(D)],
     jump: [Key(Space), Key(W)],
+    pickup: [Key(E)],
 )
