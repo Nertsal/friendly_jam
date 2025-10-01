@@ -23,6 +23,11 @@ pub struct SolverSprites {
     pub level1: Rc<PixelTexture>,
     pub fish: Rc<PixelTexture>,
     pub cinder_block: Rc<PixelTexture>,
+    pub grandpa: Rc<PixelTexture>,
+    pub grandson: Rc<PixelTexture>,
+    pub trashcan_evil: Rc<PixelTexture>,
+    pub trashcan: Rc<PixelTexture>,
+    pub recycle: Rc<PixelTexture>,
     #[load(load_with = "load_gif(&manager, &base_path.join(\"explosion.gif\"))")]
     pub explosion: Vec<GifFrame>,
 }
@@ -99,6 +104,10 @@ pub struct SolverItem {
 pub enum SolverItemKind {
     Fish,
     CinderBlock,
+    Grandpa,
+    Grandson,
+    Trashcan,
+    Recycle,
 }
 
 impl SolverSprites {
@@ -106,6 +115,10 @@ impl SolverSprites {
         match kind {
             SolverItemKind::Fish => &self.fish,
             SolverItemKind::CinderBlock => &self.cinder_block,
+            SolverItemKind::Grandpa => &self.grandpa,
+            SolverItemKind::Grandson => &self.grandson,
+            SolverItemKind::Trashcan => &self.trashcan,
+            SolverItemKind::Recycle => &self.recycle,
         }
     }
 }

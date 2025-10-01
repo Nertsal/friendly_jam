@@ -24,6 +24,7 @@ pub struct DispatcherState {
 pub struct SolverState {
     pub current_level: usize,
     pub levels_completed: usize,
+    pub trashcan_evil: bool,
 }
 
 impl DispatcherState {
@@ -41,6 +42,7 @@ impl SolverState {
         Self {
             current_level: 0,
             levels_completed: 0,
+            trashcan_evil: true,
         }
     }
 

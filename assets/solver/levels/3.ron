@@ -1,0 +1,64 @@
+(
+    door_entrance: true,
+    door_exit: false,
+    spawnpoint: (1.0, 1.0),
+    transition: (
+        min: (0.0, -2.0),
+        max: (16.0, -1.0),
+    ),
+    platforms: [
+        (
+            pos: (8.0, 1.5),
+            width: 2.0,
+        ),
+    ],
+    items: [
+        (
+            kind: Grandpa,
+            can_pickup: true,
+            has_gravity: true,
+            collider: (
+                position: (7.2, 1.5),
+                shape: Rectangle(
+                    width: 1.0,
+                    height: 2.0,
+                ),
+            ),
+        ),
+        (
+            kind: Grandson,
+            can_pickup: true,
+            has_gravity: true,
+            collider: (
+                position: (8.7, 1.5),
+                shape: Rectangle(
+                    width: 1.0,
+                    height: 1.5,
+                ),
+            ),
+        ),
+        (
+            kind: Trashcan,
+            has_gravity: true,
+            collider: (
+                position: (12.0, 1.0),
+                shape: Rectangle(
+                    width: 1.0,
+                    height: 1.5,
+                ),
+            ),
+        ),
+        (
+            kind: Recycle,
+            can_pickup: true,
+            has_gravity: true,
+            collider: (
+                position: (12.0, 1.0),
+                shape: Rectangle(
+                    width: 1.0,
+                    height: 1.5,
+                ),
+            ),
+        ),
+    ],
+)
