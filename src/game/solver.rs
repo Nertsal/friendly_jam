@@ -33,6 +33,7 @@ pub struct GameSolver {
 }
 
 struct SolverStateClient {
+    time: FTime,
     player: Player,
     level_static_colliders: Vec<Collider>,
     door_entrance: Collider,
@@ -113,6 +114,7 @@ impl GameSolver {
             cursor_position_game: vec2::ZERO,
 
             client_state: SolverStateClient {
+                time: FTime::ZERO,
                 player: Player {
                     collider: Collider::aabb(
                         Aabb2::point(vec2(0.0, 0.0))
@@ -238,11 +240,19 @@ impl GameSolver {
                 && self.state.trashcan_evil
             {
                 &assets.solver.sprites.trashcan_evil
+            } else if let SolverItemKind::Fish = item.kind {
+                let frames = &assets.solver.sprites.fish;
+                let frame = ((self.client_state.time.as_f32() / 1.5).fract() * frames.len() as f32)
+                    .floor() as usize;
+                frames.get(frame).unwrap_or(&frames[0])
             } else {
                 assets.solver.sprites.item_texture(item.kind)
             };
 
             let mut transform = mat3::identity();
+            if let SolverItemKind::Fish = item.kind {
+                transform *= mat3::scale_uniform(5.0);
+            }
             if let SolverItemKind::Grandson = item.kind
                 && let Some(spin) = self.client_state.grandson_spin
             {
@@ -796,6 +806,7 @@ impl geng::State for GameSolver {
         }
 
         let delta_time = FTime::new(delta_time as f32);
+        self.client_state.time += delta_time;
 
         {
             let window = self.context.geng.window();
