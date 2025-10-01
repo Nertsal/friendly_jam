@@ -41,6 +41,7 @@ struct SolverStateClient {
     items: Vec<SolverItem>,
     picked_up_item: Option<SolverItem>,
     explosion: Option<(vec2<FCoord>, FTime)>,
+    grandson_spin: Option<Angle<FCoord>>,
 }
 
 struct PlayerControl {
@@ -131,6 +132,7 @@ impl GameSolver {
                 items: Vec::new(),
                 picked_up_item: None,
                 explosion: None,
+                grandson_spin: None,
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -226,8 +228,17 @@ impl GameSolver {
             } else {
                 assets.solver.sprites.item_texture(item.kind)
             };
+
+            let mut transform = mat3::identity();
+            if let SolverItemKind::Grandson = item.kind
+                && let Some(spin) = self.client_state.grandson_spin
+            {
+                transform *= mat3::rotate(spin.as_f32());
+            }
+
             geng_utils::texture::DrawTexture::new(texture)
                 .fit(item.collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
+                .transformed(transform)
                 .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
@@ -471,7 +482,28 @@ impl GameSolver {
                 .as_r32();
                 item.collider.position =
                     self.client_state.player.collider.position + dir * r32(0.5);
-                self.client_state.items.push(item);
+
+                let mut disappear = false;
+                for other in &self.client_state.items {
+                    let check = |a, b| {
+                        item.kind == a && other.kind == b && item.collider.check(&other.collider)
+                    };
+
+                    use SolverItemKind::*;
+                    if check(Recycle, Grandson) {
+                        self.client_state.grandson_spin = Some(Angle::ZERO);
+                    } else if check(Recycle, Grandpa) {
+                        //TODO
+                    } else if check(Grandpa, Trashcan) {
+                        panic!("ДЕДЭНД: вспомни с кем честь имеешь, скорлупа")
+                    } else if check(Grandson, Trashcan) {
+                        disappear = true;
+                    }
+                }
+
+                if !disappear {
+                    self.client_state.items.push(item);
+                }
             } else if let Some(i) = self.client_state.items.iter().position(|item| {
                 item.can_pickup
                     && item.collider.check(&self.client_state.player.collider)
@@ -756,6 +788,13 @@ impl geng::State for GameSolver {
             }
             if geng_utils::key::is_key_pressed(window, &controls.jump) {
                 self.player_control.hold_jump = true;
+            }
+        }
+
+        if let Some(spin) = &mut self.client_state.grandson_spin {
+            *spin += Angle::from_degrees(r32(360.0) * delta_time);
+            if spin.as_degrees().as_f32() > 360.0 {
+                self.client_state.grandson_spin = None;
             }
         }
 
