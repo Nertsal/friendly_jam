@@ -450,7 +450,7 @@ impl GameDispatcher {
                             .send(ClientMessage::SyncDispatcherState(self.state.clone()));
                     }
                     DispatcherItem::Bfb => {
-                        assets.sounds.click.play();
+                        assets.sounds.button.play();
                         if self.client_state.bfb_pressed.is_none() {
                             self.client_state.bfb_pressed = Some(FTime::ZERO);
                         }
@@ -460,7 +460,7 @@ impl GameDispatcher {
                     | DispatcherItem::ButtonGreen
                         if self.state.button_station_open =>
                     {
-                        assets.sounds.click.play();
+                        assets.sounds.button.play();
                         self.client_state
                             .buttons_pressed
                             .entry(*item)
@@ -470,7 +470,7 @@ impl GameDispatcher {
                         assets.sounds.mouse.play();
                     }
                     DispatcherItem::Book => {
-                        assets.sounds.click.play();
+                        assets.sounds.book.play();
                         drop(assets);
                         self.change_focus(Focus::Book);
                         break;
