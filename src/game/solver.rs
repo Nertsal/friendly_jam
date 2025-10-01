@@ -245,6 +245,11 @@ impl GameSolver {
                 let frame = ((self.client_state.time.as_f32() / 1.5).fract() * frames.len() as f32)
                     .floor() as usize;
                 frames.get(frame).unwrap_or(&frames[0])
+            } else if let SolverItemKind::CinderBlock = item.kind {
+                let frames = &assets.solver.sprites.excalibur;
+                let frame = ((self.client_state.time.as_f32() / 0.7).fract() * frames.len() as f32)
+                    .floor() as usize;
+                frames.get(frame).unwrap_or(&frames[0])
             } else {
                 assets.solver.sprites.item_texture(item.kind)
             };

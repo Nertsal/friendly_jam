@@ -23,7 +23,8 @@ pub struct SolverSprites {
     pub level1: Rc<PixelTexture>,
     #[load(list = "1..=7")]
     pub fish: Vec<Rc<PixelTexture>>,
-    pub cinder_block: Rc<PixelTexture>,
+    #[load(list = "1..=2")]
+    pub excalibur: Vec<Rc<PixelTexture>>,
     pub grandpa: Rc<PixelTexture>,
     pub grandson: Rc<PixelTexture>,
     pub trashcan_evil: Rc<PixelTexture>,
@@ -116,7 +117,7 @@ impl SolverSprites {
     pub fn item_texture(&self, kind: SolverItemKind) -> &Rc<PixelTexture> {
         match kind {
             SolverItemKind::Fish => &self.fish[0],
-            SolverItemKind::CinderBlock => &self.cinder_block,
+            SolverItemKind::CinderBlock => &self.excalibur[0],
             SolverItemKind::Grandpa => &self.grandpa,
             SolverItemKind::Grandson => &self.grandson,
             SolverItemKind::Trashcan => &self.trashcan,
