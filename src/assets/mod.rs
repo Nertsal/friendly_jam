@@ -37,7 +37,9 @@ pub struct Palette {
 pub struct SoundAssets {
     #[load(ext = "mp3", options(looped = "true"))]
     pub music: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
     pub click: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
     pub hover: Rc<geng::Sound>,
     #[load(ext = "mp3")]
     pub mouse: Rc<geng::Sound>,

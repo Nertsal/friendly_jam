@@ -49,6 +49,7 @@ struct DispatcherUi {
 }
 
 pub struct DispatcherStateClient {
+    hovering_smth: bool,
     active_side: DispatcherViewSide,
     focus: Focus,
     login_code: Vec<usize>,
@@ -68,7 +69,7 @@ impl GameDispatcher {
     pub fn new(context: &Context, connection: ClientConnection) -> Self {
         let assets = context.assets.get();
         let mut fx = assets.sounds.music.play();
-        fx.set_volume(0.5);
+        fx.set_volume(0.3);
 
         const TURN_BUTTON_SIZE: vec2<f32> = vec2(50.0, 50.0);
         Self {
@@ -91,6 +92,7 @@ impl GameDispatcher {
             cursor_position_game: vec2::ZERO,
 
             client_state: DispatcherStateClient {
+                hovering_smth: false,
                 active_side: DispatcherViewSide::Back,
                 focus: Focus::Whole,
                 login_code: vec![],
@@ -129,6 +131,7 @@ impl GameDispatcher {
             self.context.geng.ugli(),
         );
         ugli::clear(framebuffer, Some(assets.palette.background), None, None);
+        self.client_state.hovering_smth = false;
 
         let sprites = &assets.dispatcher.sprites;
 
@@ -270,6 +273,7 @@ impl GameDispatcher {
                 && !(*item == DispatcherItem::Bfb && self.client_state.bfb_pressed.is_some())
                 && !self.client_state.buttons_pressed.contains_key(item)
             {
+                self.client_state.hovering_smth = true;
                 draw.target = draw.target.extend_uniform(10.0);
             }
 
@@ -290,6 +294,7 @@ impl GameDispatcher {
             (&sprites.arrow_right, self.ui.turn_right),
         ] {
             if target.contains(self.cursor_position_game) {
+                self.client_state.hovering_smth = true;
                 target = target.extend_uniform(target.width() * 0.1);
             }
             geng_utils::texture::DrawTexture::new(texture)
@@ -315,6 +320,7 @@ impl GameDispatcher {
                 {
                     let mut pos = *pos;
                     if monitor_focused && pos.contains(self.cursor_position_game) {
+                        self.client_state.hovering_smth = true;
                         pos = pos.extend_uniform(3.0);
                     }
                     geng_utils::texture::DrawTexture::new(&sprites.file)
@@ -350,6 +356,7 @@ impl GameDispatcher {
                 // Profile
                 let mut user_icon = self.ui.user_icon;
                 if monitor_focused && user_icon.contains(self.cursor_position_game) {
+                    self.client_state.hovering_smth = true;
                     user_icon = user_icon.extend_uniform(5.0);
                 }
                 geng_utils::texture::DrawTexture::new(&sprites.user_icon)
@@ -395,9 +402,11 @@ impl GameDispatcher {
         let assets = self.context.assets.get();
 
         if self.ui.turn_left.contains(self.cursor_position_game) {
+            assets.sounds.click.play();
             self.client_state.active_side = self.client_state.active_side.cycle_left();
             return;
         } else if self.ui.turn_right.contains(self.cursor_position_game) {
+            assets.sounds.click.play();
             self.client_state.active_side = self.client_state.active_side.cycle_right();
             return;
         }
@@ -417,11 +426,13 @@ impl GameDispatcher {
             if hitbox.contains(self.cursor_position_game) {
                 match item {
                     DispatcherItem::DoorSign => {
+                        assets.sounds.click.play();
                         self.state.door_sign_open = !self.state.door_sign_open;
                         self.connection
                             .send(ClientMessage::SyncDispatcherState(self.state.clone()));
                     }
                     DispatcherItem::Monitor => {
+                        assets.sounds.click.play();
                         drop(assets);
                         self.change_focus(Focus::Monitor);
                         break;
@@ -433,11 +444,13 @@ impl GameDispatcher {
                                 .button_station_inside
                                 .contains(self.cursor_position_game) =>
                     {
+                        assets.sounds.click.play();
                         self.state.button_station_open = !self.state.button_station_open;
                         self.connection
                             .send(ClientMessage::SyncDispatcherState(self.state.clone()));
                     }
                     DispatcherItem::Bfb => {
+                        assets.sounds.click.play();
                         if self.client_state.bfb_pressed.is_none() {
                             self.client_state.bfb_pressed = Some(FTime::ZERO);
                         }
@@ -447,6 +460,7 @@ impl GameDispatcher {
                     | DispatcherItem::ButtonGreen
                         if self.state.button_station_open =>
                     {
+                        assets.sounds.click.play();
                         self.client_state
                             .buttons_pressed
                             .entry(*item)
@@ -456,6 +470,7 @@ impl GameDispatcher {
                         assets.sounds.mouse.play();
                     }
                     DispatcherItem::Book => {
+                        assets.sounds.click.play();
                         drop(assets);
                         self.change_focus(Focus::Book);
                         break;
@@ -465,6 +480,7 @@ impl GameDispatcher {
             }
         }
 
+        let assets = self.context.assets.get();
         if let Focus::Monitor = self.client_state.focus {
             if self.state.monitor_unlocked {
                 if let Some(file) = self
@@ -474,9 +490,11 @@ impl GameDispatcher {
                     .position(|file| file.contains(self.cursor_position_game))
                 {
                     // Open file
+                    assets.sounds.click.play();
                     self.client_state.opened_file = Some(file);
                 }
             } else if self.ui.user_icon.contains(self.cursor_position_game) {
+                assets.sounds.click.play();
                 // TODO: smth
             }
         }
@@ -647,7 +665,13 @@ impl geng::State for GameDispatcher {
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
         self.framebuffer_size = framebuffer.size();
         ugli::clear(framebuffer, Some(Rgba::BLACK), None, None);
+
+        let was_hovering = self.client_state.hovering_smth;
         self.draw_game();
+        if !was_hovering && self.client_state.hovering_smth {
+            self.context.assets.get().sounds.hover.play();
+        }
+
         let draw = geng_utils::texture::DrawTexture::new(&self.final_texture)
             .fit_screen(vec2(0.5, 0.5), framebuffer);
         self.screen = draw.target;
