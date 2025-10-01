@@ -23,6 +23,8 @@ pub struct SolverSprites {
     pub level1: Rc<PixelTexture>,
     pub fish: Rc<PixelTexture>,
     pub cinder_block: Rc<PixelTexture>,
+    #[load(load_with = "load_gif(&manager, &base_path.join(\"explosion.gif\"))")]
+    pub explosion: Vec<GifFrame>,
 }
 
 #[derive(geng::asset::Load)]
@@ -93,7 +95,7 @@ pub struct SolverItem {
     pub collider: Collider,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SolverItemKind {
     Fish,
     CinderBlock,

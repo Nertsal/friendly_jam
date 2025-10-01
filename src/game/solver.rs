@@ -40,6 +40,7 @@ struct SolverStateClient {
     platforms: Vec<Collider>,
     items: Vec<SolverItem>,
     picked_up_item: Option<SolverItem>,
+    explosion: Option<(vec2<FCoord>, FTime)>,
 }
 
 struct PlayerControl {
@@ -129,6 +130,7 @@ impl GameSolver {
                 platforms: Vec::new(),
                 items: Vec::new(),
                 picked_up_item: None,
+                explosion: None,
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -261,6 +263,20 @@ impl GameSolver {
                 .fit(collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
                 .draw(&self.camera, &self.context.geng, framebuffer);
         }
+
+        // Explosion
+        if let Some((pos, time)) = self.client_state.explosion {
+            let frames = &assets.solver.sprites.explosion;
+            let frame = (time.as_f32() * frames.len() as f32).floor() as usize;
+            if let Some(frame) = frames.get(frame) {
+                geng_utils::texture::DrawTexture::new(&frame.texture)
+                    .fit(
+                        Aabb2::point(pos.as_f32()).extend_uniform(1.0),
+                        vec2(0.5, 0.5),
+                    )
+                    .draw(&self.camera, &self.context.geng, framebuffer);
+            }
+        }
     }
 
     fn player_respawn(&mut self) {
@@ -355,6 +371,7 @@ impl GameSolver {
     }
 
     fn update_items(&mut self, delta_time: FTime) {
+        // Item movement
         for item in &mut self.client_state.items {
             if item.has_gravity {
                 let collision = self
@@ -373,6 +390,31 @@ impl GameSolver {
                     }
                 }
             }
+        }
+
+        // Item collision
+        let items_count = self.client_state.items.len();
+        let mut remove_items = Vec::new();
+        for i in 0..items_count {
+            for j in i + 1..items_count {
+                if let Ok([item, other]) = self.client_state.items.get_disjoint_mut([i, j]) {
+                    let check_combination = |a, b| {
+                        item.kind == a && other.kind == b || item.kind == b && other.kind == a
+                    };
+
+                    use crate::assets::SolverItemKind::*;
+                    if check_combination(Fish, CinderBlock) && item.collider.check(&other.collider)
+                    {
+                        // Explosion
+                        remove_items.extend([i, j]);
+                        self.client_state.explosion = Some((item.collider.position, FTime::ZERO));
+                    }
+                }
+            }
+        }
+        remove_items.sort();
+        for i in remove_items.into_iter().rev() {
+            self.client_state.items.swap_remove(i);
         }
     }
 
@@ -697,6 +739,26 @@ impl geng::State for GameSolver {
             }
             if geng_utils::key::is_key_pressed(window, &controls.jump) {
                 self.player_control.hold_jump = true;
+            }
+        }
+
+        if let Some((pos, timer)) = &mut self.client_state.explosion {
+            *timer += delta_time;
+            if timer.as_f32() > 1.0 {
+                if (self.client_state.player.collider.position - *pos)
+                    .len()
+                    .as_f32()
+                    < 1.5
+                {
+                    panic!("ты взорвался");
+                }
+
+                self.client_state.explosion = None;
+                if self.state.current_level == 1 && !self.state.is_exit_open() {
+                    self.state.levels_completed += 1;
+                    self.connection
+                        .send(ClientMessage::SyncSolverState(self.state.clone()));
+                }
             }
         }
 

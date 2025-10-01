@@ -9,6 +9,7 @@ use crate::render::Color;
 use std::path::PathBuf;
 
 use geng::prelude::*;
+use geng_utils::gif::GifFrame;
 
 #[derive(geng::asset::Load)]
 pub struct Assets {
@@ -56,6 +57,28 @@ friendly_derive::texture_atlas!(pub SpritesAtlas {
     play_dispatcher,
     play_solver,
 });
+
+fn load_gif(
+    manager: &geng::asset::Manager,
+    path: &std::path::Path,
+) -> geng::asset::Future<Vec<GifFrame>> {
+    let manager = manager.clone();
+    let path = path.to_owned();
+    async move {
+        geng_utils::gif::load_gif(
+            &manager,
+            &path,
+            geng_utils::gif::GifOptions {
+                frame: geng::asset::TextureOptions {
+                    filter: ugli::Filter::Nearest,
+                    ..Default::default()
+                },
+            },
+        )
+        .await
+    }
+    .boxed_local()
+}
 
 #[derive(Clone)]
 pub struct PixelTexture {
