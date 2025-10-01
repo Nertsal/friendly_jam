@@ -190,6 +190,15 @@ impl GameSolver {
             geng_utils::texture::DrawTexture::new(&assets.solver.sprites.level1)
                 .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
                 .draw(&self.camera, &self.context.geng, framebuffer);
+        } else if self.state.current_level == 2 {
+            let texture = &assets.solver.sprites.green_hint;
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(
+                    Aabb2::point(LEVEL_SIZE * vec2(0.7, 0.5))
+                        .extend_symmetric(vec2(3.0, 3.0) / 2.0),
+                    vec2(0.5, 0.5),
+                )
+                .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
         // Bounds
