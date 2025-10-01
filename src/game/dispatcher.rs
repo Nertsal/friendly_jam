@@ -334,7 +334,7 @@ impl GameDispatcher {
                             &assets.font,
                             text,
                             10.0,
-                            Rgba::BLACK,
+                            assets.palette.text,
                             window.extend_uniform(-10.0),
                             &self.camera,
                             framebuffer,
