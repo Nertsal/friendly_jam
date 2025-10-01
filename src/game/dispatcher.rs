@@ -158,6 +158,7 @@ impl GameDispatcher {
             }
 
             let texture = match item {
+                DispatcherItem::Door => &sprites.door,
                 DispatcherItem::DoorSign => {
                     if self.state.door_sign_open {
                         &sprites.sign_open
@@ -682,6 +683,7 @@ impl geng::State for GameDispatcher {
 impl DispatcherItem {
     pub fn is_interactable(&self) -> bool {
         match self {
+            DispatcherItem::Door => false,
             DispatcherItem::DoorSign => true,
             DispatcherItem::Table => false,
             DispatcherItem::Monitor => true,

@@ -11,6 +11,7 @@ pub struct DispatcherAssets {
 
 #[derive(geng::asset::Load)]
 pub struct DispatcherSprites {
+    pub door: Rc<PixelTexture>,
     pub sign_open: Rc<PixelTexture>,
     pub sign_closed: Rc<PixelTexture>,
 
@@ -65,6 +66,7 @@ pub struct DispatcherView {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum DispatcherItem {
+    Door,
     DoorSign,
     Table,
     Monitor,

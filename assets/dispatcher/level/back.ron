@@ -2,6 +2,12 @@
 (
     items: [
         (
+            Door,
+            (
+                anchor: (960, 540),
+            ),
+        ),
+        (
             DoorSign,
             (
                 anchor: (960, 540),
