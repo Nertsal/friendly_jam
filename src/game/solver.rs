@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::{
-    assets::SolverItem,
+    assets::{SolverItem, SolverItemKind},
     interop::{ClientConnection, ClientMessage, ServerMessage},
     model::*,
 };
@@ -213,7 +213,17 @@ impl GameSolver {
 
         // Items
         for item in &self.client_state.items {
-            let texture = assets.solver.sprites.item_texture(item.kind);
+            let texture = if let SolverItemKind::Recycle = item.kind
+                && self.state.trashcan_evil
+            {
+                continue;
+            } else if let SolverItemKind::Trashcan = item.kind
+                && self.state.trashcan_evil
+            {
+                &assets.solver.sprites.trashcan_evil
+            } else {
+                assets.solver.sprites.item_texture(item.kind)
+            };
             geng_utils::texture::DrawTexture::new(texture)
                 .fit(item.collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
                 .draw(&self.camera, &self.context.geng, framebuffer);
@@ -461,7 +471,9 @@ impl GameSolver {
                     self.client_state.player.collider.position + dir * r32(0.5);
                 self.client_state.items.push(item);
             } else if let Some(i) = self.client_state.items.iter().position(|item| {
-                item.can_pickup && item.collider.check(&self.client_state.player.collider)
+                item.can_pickup
+                    && item.collider.check(&self.client_state.player.collider)
+                    && !(self.state.trashcan_evil && matches!(item.kind, SolverItemKind::Recycle))
             }) {
                 // Pick up an item
                 self.client_state.picked_up_item = Some(self.client_state.items.swap_remove(i));
