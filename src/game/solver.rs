@@ -330,7 +330,7 @@ impl GameSolver {
             if let Some(frame) = frames.get(frame) {
                 geng_utils::texture::DrawTexture::new(&frame.texture)
                     .fit(
-                        Aabb2::point(pos.as_f32()).extend_uniform(1.0),
+                        Aabb2::point(pos.as_f32()).extend_uniform(2.0),
                         vec2(0.5, 0.5),
                     )
                     .draw(&self.camera, &self.context.geng, framebuffer);
