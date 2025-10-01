@@ -418,7 +418,6 @@ impl GameDispatcher {
         }
 
         if let Focus::Monitor = self.client_state.focus
-            && self.client_state.opened_file.is_none()
             && let Some(file) = self
                 .ui
                 .files

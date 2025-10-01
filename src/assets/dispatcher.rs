@@ -4,7 +4,7 @@ use super::*;
 pub struct DispatcherAssets {
     pub sprites: DispatcherSprites,
     pub level: DispatcherLevel,
-    #[load(list = "0..=0")]
+    #[load(list = "0..=1")]
     pub files: Vec<String>,
 }
 
