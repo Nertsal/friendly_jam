@@ -47,7 +47,8 @@ pub struct SoundAssets {
     pub book: Rc<geng::Sound>,
     #[load(ext = "mp3")]
     pub button: Rc<geng::Sound>,
-    // pub cactus: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub cactus: Rc<geng::Sound>,
     // pub the_sock: Rc<geng::Sound>,
 }
 

@@ -472,6 +472,9 @@ impl GameDispatcher {
                     DispatcherItem::RealMouse => {
                         assets.sounds.mouse.play();
                     }
+                    DispatcherItem::Cactus => {
+                        assets.sounds.cactus.play();
+                    }
                     DispatcherItem::Book => {
                         assets.sounds.book.play();
                         drop(assets);
