@@ -1,4 +1,12 @@
 #![enable(implicit_some)]
 (
-    items: [],
+    items: [
+        (
+            Tea,
+            (
+                anchor: (0, 0),
+                alignment: (0, 0),
+            ),
+        ),
+    ],
 )
