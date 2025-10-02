@@ -886,7 +886,9 @@ impl GameDispatcher {
             ServerMessage::SyncDispatcherState(dispatcher_state) => self.state = dispatcher_state,
             ServerMessage::SyncSolverState(solver_state) => self.solver_state = solver_state,
             ServerMessage::SyncSolverPlayer(player) => self.solver_player = Some(player),
-            ServerMessage::GameCrash(message) => panic!("{message}"),
+            ServerMessage::GameCrash(_) => {
+                // TODO
+            }
         }
     }
 
@@ -894,7 +896,9 @@ impl GameDispatcher {
         if let Some(time) = &mut self.client_state.bfb_pressed {
             *time += delta_time;
             if time.as_f32() > 1.0 {
-                panic!("ты нажал на большую красную кнопку");
+                self.connection.send(ClientMessage::CrashOther(
+                    "твой друг нажал на большую красную кнопку".into(),
+                ));
             }
         }
         for (item, time) in &mut self.client_state.buttons_pressed {
@@ -973,7 +977,7 @@ impl geng::State for GameDispatcher {
                     panic!("тебе конец, и игре тоже");
                 }
 
-                panic!("ты взорвался");
+                // panic!("ты взорвался");
             }
         }
 

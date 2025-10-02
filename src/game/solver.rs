@@ -562,7 +562,8 @@ impl GameSolver {
             {
                 remove_projs.push(proj_i);
             } else if proj.collider.check(&self.client_state.player.collider) {
-                panic!("ты попался карасю");
+                self.game_crash("ты попался карасю");
+                return;
                 // remove_projs.push(proj_i);
             }
         }
@@ -726,7 +727,8 @@ impl GameSolver {
                     } else if check(Recycle, Grandpa) {
                         self.client_state.grandpa_drill = Some(FTime::ZERO);
                     } else if check(Grandpa, Trashcan) {
-                        panic!("ДЕДЭНД: вспомни с кем честь имеешь, скорлупа")
+                        self.game_crash("ДЕДЭНД: вспомни с кем честь имеешь, скорлупа");
+                        return;
                     } else if check(Grandson, Trashcan) {
                         disappear = true;
                     }
@@ -1042,8 +1044,14 @@ impl GameSolver {
                 self.dispatcher_state = dispatcher_state
             }
             ServerMessage::SyncSolverState(solver_state) => self.state = solver_state,
-            ServerMessage::GameCrash(message) => panic!("{message}"),
+            ServerMessage::GameCrash(message) => self.game_crash(message),
         }
+    }
+
+    fn game_crash(&mut self, message: impl Into<String>) {
+        let message = message.into();
+        log::info!("Game restart: {message}");
+        self.reload_level();
     }
 }
 
@@ -1099,7 +1107,8 @@ impl geng::State for GameSolver {
             *timer += delta_time;
             if timer.as_f32() > 1.0 {
                 if self.state.popped {
-                    panic!("тебе конец, и игре тоже");
+                    self.game_crash("тебе конец, и игре тоже");
+                    return;
                 }
 
                 if (self.client_state.player.collider.position - *pos)
@@ -1107,7 +1116,8 @@ impl geng::State for GameSolver {
                     .as_f32()
                     < 1.5
                 {
-                    panic!("ты взорвался");
+                    self.game_crash("ты взорвался");
+                    return;
                 }
 
                 self.client_state.explosion = None;
