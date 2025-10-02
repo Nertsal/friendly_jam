@@ -48,6 +48,13 @@ struct SolverStateClient {
     grandpa_drill: Option<FTime>,
     bubble_code: String,
     interact_item: Option<usize>,
+    projectiles: Vec<Projectile>,
+    fish_cooldown: FTime,
+}
+
+struct Projectile {
+    pub collider: Collider,
+    pub velocity: vec2<FCoord>,
 }
 
 struct PlayerControl {
@@ -146,6 +153,8 @@ impl GameSolver {
                 grandpa_drill: None,
                 bubble_code: String::new(),
                 interact_item: None,
+                projectiles: Vec::new(),
+                fish_cooldown: FTime::new(1.0),
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -337,6 +346,14 @@ impl GameSolver {
                 .unwrap_or(&assets.solver.sprites.balls[0]);
             geng_utils::texture::DrawTexture::new(texture)
                 .fit(ball.compute_aabb().as_f32(), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
+
+        // Projectile
+        for projectile in &self.client_state.projectiles {
+            let texture = &assets.solver.sprites.projectile;
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(projectile.collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
                 .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
@@ -547,6 +564,28 @@ impl GameSolver {
         }
     }
 
+    fn update_projectiles(&mut self, delta_time: FTime) {
+        let mut remove_projs = Vec::new();
+        for (proj_i, proj) in self.client_state.projectiles.iter_mut().enumerate() {
+            proj.collider.position += proj.velocity * delta_time;
+            if self
+                .client_state
+                .level_static_colliders
+                .iter()
+                .any(|col| proj.collider.check(col))
+            {
+                remove_projs.push(proj_i);
+            } else if proj.collider.check(&self.client_state.player.collider) {
+                panic!("ты попался карасю");
+                // remove_projs.push(proj_i);
+            }
+        }
+
+        for i in remove_projs.into_iter().rev() {
+            self.client_state.projectiles.swap_remove(i);
+        }
+    }
+
     fn update_balls(&mut self, delta_time: FTime) {
         for (ball, _) in &mut self.client_state.bubble_balls {
             let mut any_collision = false;
@@ -599,6 +638,21 @@ impl GameSolver {
                     Some(collision) => {
                         item.collider.position -= collision.normal * collision.penetration;
                     }
+                }
+            }
+
+            if self.state.current_level == 4 && item.kind == SolverItemKind::Fish {
+                // Shoot projectiles
+                self.client_state.fish_cooldown -= delta_time;
+                if self.client_state.fish_cooldown.as_f32() <= 0.0 {
+                    self.client_state.fish_cooldown += FTime::new(0.7);
+                    let position = item.collider.position;
+                    self.client_state.projectiles.push(Projectile {
+                        collider: Collider::circle(position, r32(0.2)),
+                        velocity: (self.client_state.player.collider.position - position)
+                            .normalize_or_zero()
+                            * r32(5.0),
+                    });
                 }
             }
         }
@@ -1049,6 +1103,7 @@ impl geng::State for GameSolver {
             }
         }
 
+        self.update_projectiles(delta_time);
         self.update_player(delta_time);
         self.update_items(delta_time);
         self.update_balls(delta_time);

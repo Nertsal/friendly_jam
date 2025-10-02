@@ -40,6 +40,13 @@ pub struct DispatcherSprites {
     pub workspace_v2: Rc<PixelTexture>,
     pub file: Rc<PixelTexture>,
     pub file_window: Rc<PixelTexture>,
+
+    pub novella: NovellaSprites,
+}
+
+#[derive(geng::asset::Load)]
+pub struct NovellaSprites {
+    pub background: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load, Clone)]

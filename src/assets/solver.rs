@@ -39,6 +39,7 @@ pub struct SolverSprites {
     pub balls: Vec<Rc<PixelTexture>>,
     #[load(load_with = "load_gif(&manager, &base_path.join(\"explosion.gif\"))")]
     pub explosion: Vec<GifFrame>,
+    pub projectile: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load)]
