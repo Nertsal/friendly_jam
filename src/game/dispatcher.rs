@@ -56,6 +56,7 @@ pub struct DispatcherStateClient {
     opened_file: Option<usize>,
     bfb_pressed: Option<FTime>,
     buttons_pressed: HashMap<DispatcherItem, FTime>,
+    bubble_buttons: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,6 +100,7 @@ impl GameDispatcher {
                 opened_file: None,
                 bfb_pressed: None,
                 buttons_pressed: HashMap::new(),
+                bubble_buttons: 0,
             },
             state: DispatcherState::new(),
             solver_state: SolverState::new(),
@@ -599,6 +601,15 @@ impl geng::State for GameDispatcher {
         for (item, time) in &mut self.client_state.buttons_pressed {
             *time += delta_time;
             if time.as_f32() > 1.0 {
+                if self.solver_state.levels_completed == 3 {
+                    self.client_state.bubble_buttons += 1;
+                    if self.client_state.bubble_buttons == 5 {
+                        self.solver_state.levels_completed += 1;
+                        self.connection
+                            .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
+                    }
+                }
+
                 match item {
                     DispatcherItem::ButtonSalad => {
                         if self.state.monitor_unlocked && self.solver_state.levels_completed == 0 {
