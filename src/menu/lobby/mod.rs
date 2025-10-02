@@ -70,6 +70,7 @@ impl Lobby {
                     GameRole::Dispatcher => Box::new(crate::game::GameDispatcher::new(
                         &self.context,
                         self.state.connection.clone(),
+                        self.test,
                     )),
                     GameRole::Solver => Box::new(crate::game::GameSolver::new(
                         &self.context,

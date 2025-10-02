@@ -63,6 +63,29 @@ pub struct DispatcherStateClient {
     buttons_pressed: HashMap<DispatcherItem, FTime>,
     bubble_buttons: usize,
     explosion: Option<(vec2<f32>, FTime)>,
+    novella: Option<NovellaState>,
+}
+
+struct NovellaState {
+    sprite: Rc<PixelTexture>,
+    line: usize,
+    character: usize,
+    fast: bool,
+    next_char_in: f32,
+    is_line_done: bool,
+}
+
+impl NovellaState {
+    pub fn new(assets: &Assets) -> Self {
+        Self {
+            sprite: assets.dispatcher.sprites.novella.neutral.clone(),
+            line: 0,
+            character: 0,
+            fast: false,
+            next_char_in: 1.0,
+            is_line_done: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,13 +96,13 @@ enum Focus {
 }
 
 impl GameDispatcher {
-    pub fn new(context: &Context, connection: ClientConnection) -> Self {
+    pub fn new(context: &Context, connection: ClientConnection, test: Option<usize>) -> Self {
         let assets = context.assets.get();
         let mut fx = assets.sounds.dispatcher.play();
         fx.set_volume(0.3);
 
         const TURN_BUTTON_SIZE: vec2<f32> = vec2(50.0, 50.0);
-        Self {
+        let mut game = Self {
             context: context.clone(),
             connection,
 
@@ -117,6 +140,7 @@ impl GameDispatcher {
                 buttons_pressed: HashMap::new(),
                 bubble_buttons: 0,
                 explosion: None,
+                novella: None,
             },
             state: DispatcherState::new(),
             solver_state: SolverState::new(),
@@ -140,7 +164,14 @@ impl GameDispatcher {
                 ))
                 .extend_symmetric(TURN_BUTTON_SIZE / 2.0),
             },
+        };
+        if let Some(test) = test {
+            game.solver_state.current_level = test;
+            game.solver_state.levels_completed = test;
+            game.connection
+                .send(ClientMessage::SyncSolverState(game.solver_state.clone()));
         }
+        game
     }
 
     fn draw_game(&mut self) {
@@ -150,6 +181,48 @@ impl GameDispatcher {
             self.context.geng.ugli(),
         );
         ugli::clear(framebuffer, Some(assets.palette.background), None, None);
+
+        if let Some(novella) = &self.client_state.novella {
+            let camera = Camera2d {
+                center: SCREEN_SIZE.as_f32() / 2.0,
+                rotation: Angle::ZERO,
+                fov: Camera2dFov::Vertical(SCREEN_SIZE.y as f32),
+            };
+            let sprites = &assets.dispatcher.sprites.novella;
+            let text = &assets.dispatcher.novella;
+
+            let screen = Aabb2::ZERO.extend_positive(SCREEN_SIZE.as_f32());
+
+            geng_utils::texture::DrawTexture::new(&sprites.background)
+                .fit_height(screen, 0.5)
+                .draw(&camera, &self.context.geng, framebuffer);
+            geng_utils::texture::DrawTexture::new(&novella.sprite)
+                .fit(screen, vec2(0.5, 0.0))
+                .draw(&camera, &self.context.geng, framebuffer);
+
+            let textbox = screen
+                .align_aabb(vec2(750.0, 375.0), vec2(0.5, 0.0))
+                .translate(vec2(0.0, 50.0));
+            geng_utils::texture::DrawTexture::new(&sprites.textbox)
+                .fit_height(textbox, 0.5)
+                .draw(&camera, &self.context.geng, framebuffer);
+
+            if let Some(line) = text.lines().nth(novella.line) {
+                let line: String = line.chars().take(novella.character).collect();
+                draw_text(
+                    &assets.font,
+                    &line,
+                    100.0,
+                    assets.palette.text,
+                    textbox.extend_uniform(-10.0),
+                    &camera,
+                    framebuffer,
+                );
+            }
+
+            return;
+        }
+
         self.client_state.hovering_smth = false;
 
         let sprites = &assets.dispatcher.sprites;
@@ -492,6 +565,18 @@ impl GameDispatcher {
     fn cursor_press(&mut self) {
         let assets = self.context.assets.get();
 
+        if let Some(novella) = &mut self.client_state.novella {
+            novella.fast = true;
+            novella.next_char_in -= 0.1;
+            if novella.is_line_done {
+                novella.line += 1;
+                novella.character = 0;
+                novella.is_line_done = false;
+                novella.fast = false;
+            }
+            return;
+        }
+
         if self.ui.turn_left.contains(self.cursor_position_game) {
             assets.sounds.click.play();
             self.client_state.active_side = self.client_state.active_side.cycle_left();
@@ -591,7 +676,14 @@ impl GameDispatcher {
                 {
                     // Open file
                     assets.sounds.click.play();
-                    self.client_state.opened_file = Some(file);
+                    if file == 4 {
+                        // Open novella
+                        if self.client_state.novella.is_none() {
+                            self.client_state.novella = Some(NovellaState::new(&assets));
+                        }
+                    } else {
+                        self.client_state.opened_file = Some(file);
+                    }
                 }
             } else if self.ui.user_icon.contains(self.cursor_position_game) {
                 assets.sounds.click.play();
@@ -778,6 +870,40 @@ impl geng::State for GameDispatcher {
                 }
 
                 panic!("ты взорвался");
+            }
+        }
+
+        if let Some(novella) = &mut self.client_state.novella {
+            let assets = self.context.assets.get();
+            let sprites = &assets.dispatcher.sprites.novella;
+            let text = &assets.dispatcher.novella;
+            if let Some(line) = text.lines().nth(novella.line) {
+                match line {
+                    "/спрайт_нейтральный" => {
+                        novella.sprite = sprites.neutral.clone();
+                        novella.line += 1;
+                    }
+                    "/спрайт_удивленный" => {
+                        novella.sprite = sprites.surprised.clone();
+                        novella.line += 1;
+                    }
+                    "/спрайт_злой" => {
+                        novella.sprite = sprites.angry.clone();
+                        novella.line += 1;
+                    }
+                    _ => {}
+                }
+
+                novella.next_char_in -= delta_time.as_f32();
+                while novella.next_char_in <= 0.0 {
+                    novella.character += 1;
+                    novella.next_char_in += if novella.fast { 0.1 } else { 0.2 };
+                    if novella.character >= line.chars().count() {
+                        novella.is_line_done = true;
+                    }
+                }
+            } else {
+                self.client_state.novella = None;
             }
         }
     }

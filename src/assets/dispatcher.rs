@@ -4,9 +4,10 @@ use super::*;
 pub struct DispatcherAssets {
     pub sprites: DispatcherSprites,
     pub level: DispatcherLevel,
-    #[load(list = "0..=1")]
+    #[load(list = "0..=4")]
     pub files: Vec<String>,
     pub book_text: String,
+    pub novella: String,
 }
 
 #[derive(geng::asset::Load)]
@@ -47,6 +48,10 @@ pub struct DispatcherSprites {
 #[derive(geng::asset::Load)]
 pub struct NovellaSprites {
     pub background: Rc<PixelTexture>,
+    pub textbox: Rc<PixelTexture>,
+    pub neutral: Rc<PixelTexture>,
+    pub surprised: Rc<PixelTexture>,
+    pub angry: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load, Clone)]
