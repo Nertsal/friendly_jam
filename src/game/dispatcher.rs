@@ -709,7 +709,19 @@ impl GameDispatcher {
                     | DispatcherItem::ButtonCyan
                         if self.state.button_station_open =>
                     {
-                        assets.sounds.button.play();
+                        let sound = match item {
+                            DispatcherItem::ButtonYellow => &assets.sounds.kick,
+                            DispatcherItem::ButtonGreen => &assets.sounds.psh,
+                            DispatcherItem::ButtonSalad => &assets.sounds.spit,
+                            DispatcherItem::ButtonPink => &assets.sounds.k,
+                            DispatcherItem::ButtonBlue => &assets.sounds.liproll,
+                            DispatcherItem::ButtonWhite => &assets.sounds.oo,
+                            DispatcherItem::ButtonPurple => &assets.sounds.duck,
+                            DispatcherItem::ButtonOrange => &assets.sounds.clop,
+                            DispatcherItem::ButtonCyan => &assets.sounds.button,
+                            _ => &assets.sounds.button,
+                        };
+                        sound.play();
                         self.client_state
                             .buttons_pressed
                             .entry(*item)

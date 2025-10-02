@@ -56,6 +56,23 @@ pub struct SoundAssets {
     // pub the_sock: Rc<geng::Sound>,
     #[load(ext = "mp3", list = "0..=2")]
     pub pop: Vec<Rc<geng::Sound>>,
+
+    #[load(ext = "mp3")]
+    pub clop: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub duck: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub k: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub kick: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub liproll: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub oo: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub psh: Rc<geng::Sound>,
+    #[load(ext = "mp3")]
+    pub spit: Rc<geng::Sound>,
 }
 
 #[derive(geng::asset::Load)]
