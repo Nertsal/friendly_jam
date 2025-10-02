@@ -681,9 +681,8 @@ impl GameDispatcher {
                         if self.client_state.novella.is_none() {
                             self.client_state.novella = Some(NovellaState::new(&assets));
                         }
-                    } else {
-                        self.client_state.opened_file = Some(file);
                     }
+                    self.client_state.opened_file = Some(file);
                 }
             } else if self.ui.user_icon.contains(self.cursor_position_game) {
                 assets.sounds.click.play();
