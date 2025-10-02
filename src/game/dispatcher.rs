@@ -598,21 +598,8 @@ impl GameDispatcher {
             ServerMessage::SyncSolverState(solver_state) => self.solver_state = solver_state,
         }
     }
-}
 
-impl geng::State for GameDispatcher {
-    fn update(&mut self, delta_time: f64) {
-        if let Some(Ok(message)) = self.connection.try_recv() {
-            self.handle_message(message);
-        }
-
-        let delta_time = delta_time as f32;
-        self.camera_fov.update(delta_time);
-        self.camera.fov = Camera2dFov::Vertical(self.camera_fov.current);
-        self.camera_center.update(delta_time);
-        self.camera.center = self.camera_center.current;
-
-        let delta_time = FTime::new(delta_time);
+    fn update_buttons(&mut self, delta_time: FTime) {
         if let Some(time) = &mut self.client_state.bfb_pressed {
             *time += delta_time;
             if time.as_f32() > 1.0 {
@@ -653,6 +640,13 @@ impl geng::State for GameDispatcher {
                                 .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
                         }
                     }
+                    DispatcherItem::ButtonWhite => {
+                        if self.solver_state.levels_completed == 4 {
+                            self.solver_state.levels_completed += 1;
+                            self.connection
+                                .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -660,6 +654,23 @@ impl geng::State for GameDispatcher {
         self.client_state
             .buttons_pressed
             .retain(|_, time| time.as_f32() < 1.0);
+    }
+}
+
+impl geng::State for GameDispatcher {
+    fn update(&mut self, delta_time: f64) {
+        if let Some(Ok(message)) = self.connection.try_recv() {
+            self.handle_message(message);
+        }
+
+        let delta_time = delta_time as f32;
+        self.camera_fov.update(delta_time);
+        self.camera.fov = Camera2dFov::Vertical(self.camera_fov.current);
+        self.camera_center.update(delta_time);
+        self.camera.center = self.camera_center.current;
+
+        let delta_time = FTime::new(delta_time);
+        self.update_buttons(delta_time);
     }
 
     fn handle_event(&mut self, event: geng::Event) {

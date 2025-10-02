@@ -641,7 +641,10 @@ impl GameSolver {
                 }
             }
 
-            if self.state.current_level == 4 && item.kind == SolverItemKind::Fish {
+            if self.state.current_level == 4
+                && self.state.levels_completed <= 4
+                && item.kind == SolverItemKind::Fish
+            {
                 // Shoot projectiles
                 self.client_state.fish_cooldown -= delta_time;
                 if self.client_state.fish_cooldown.as_f32() <= 0.0 {
