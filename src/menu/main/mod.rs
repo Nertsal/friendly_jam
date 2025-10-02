@@ -34,6 +34,7 @@ pub struct MainMenuUi {}
 
 impl MainMenu {
     pub async fn new(context: &Context, connect: Option<String>, test: Option<usize>) -> Self {
+        context.music.play_music(&context.assets.get().sounds.music);
         Self {
             context: context.clone(),
             ui_context: UiContext::new(context),

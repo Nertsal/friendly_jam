@@ -102,8 +102,7 @@ enum Focus {
 impl GameDispatcher {
     pub fn new(context: &Context, connection: ClientConnection, test: Option<usize>) -> Self {
         let assets = context.assets.get();
-        let mut fx = assets.sounds.dispatcher.play();
-        fx.set_volume(0.3);
+        context.music.play_music(&assets.sounds.dispatcher);
 
         const TURN_BUTTON_SIZE: vec2<f32> = vec2(50.0, 50.0);
         let mut game = Self {
@@ -703,6 +702,9 @@ impl GameDispatcher {
                     }
                     DispatcherItem::Cactus => {
                         assets.sounds.cactus.play();
+                        self.context
+                            .music
+                            .fade_temporarily(0.1, time::Duration::from_secs_f64(10.0));
                     }
                     DispatcherItem::Book => {
                         assets.sounds.book.play();

@@ -15,7 +15,6 @@ const LEVEL_SIZE: vec2<f32> = vec2(16.0, 9.0);
 pub struct GameSolver {
     context: Context,
     connection: ClientConnection,
-    music: geng::SoundEffect,
 
     final_texture: ugli::Texture,
     framebuffer_size: vec2<usize>,
@@ -85,13 +84,11 @@ impl Default for PlayerControl {
 impl GameSolver {
     pub fn new(context: &Context, connection: ClientConnection, test: Option<usize>) -> Self {
         let assets = context.assets.get();
-        let mut music = assets.sounds.dispatcher.play();
-        music.set_volume(0.3);
+        context.music.play_music(&assets.sounds.dispatcher);
 
         let mut game = Self {
             context: context.clone(),
             connection,
-            music,
 
             final_texture: geng_utils::texture::new_texture(context.geng.ugli(), SCREEN_SIZE),
             framebuffer_size: vec2(1, 1),
@@ -161,9 +158,13 @@ impl GameSolver {
 
     fn reload_level(&mut self) {
         if self.state.current_level == 4 {
-            self.music.stop();
-            self.music = self.context.assets.get().sounds.boss.play();
-            self.music.set_volume(0.3);
+            self.context
+                .music
+                .play_music(&self.context.assets.get().sounds.boss);
+        } else if self.state.current_level > 4 {
+            self.context
+                .music
+                .play_music(&self.context.assets.get().sounds.dispatcher);
         }
 
         self.player_respawn();
