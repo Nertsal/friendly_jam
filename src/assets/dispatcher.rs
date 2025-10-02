@@ -32,6 +32,8 @@ pub struct DispatcherSprites {
     pub button_big: Rc<PixelTexture>,
     pub button_big_pressed: Rc<PixelTexture>,
 
+    pub tea: Rc<PixelTexture>,
+
     pub arrow_left: Rc<PixelTexture>,
     pub arrow_right: Rc<PixelTexture>,
 
@@ -83,12 +85,14 @@ pub struct DispatcherView {
 pub enum DispatcherItem {
     Door,
     DoorSign,
+
     Table,
     Monitor,
     RealMouse,
     Cactus,
     Book,
     TheSock,
+
     ButtonStation,
     Bfb,
     ButtonYellow,
@@ -100,6 +104,8 @@ pub enum DispatcherItem {
     ButtonPurple,
     ButtonOrange,
     ButtonCyan,
+
+    Tea,
 }
 
 /// Positioning in screen-space with fixed 1920x1080 resolution.

@@ -294,6 +294,7 @@ impl GameDispatcher {
                 DispatcherItem::ButtonPurple => button!("#800080"),
                 DispatcherItem::ButtonOrange => button!("#FFA500"),
                 DispatcherItem::ButtonCyan => button!("#00EEEE"),
+                DispatcherItem::Tea => &sprites.tea,
             };
             let size = positioning
                 .size
@@ -1050,6 +1051,7 @@ impl DispatcherItem {
             | DispatcherItem::ButtonPurple
             | DispatcherItem::ButtonOrange
             | DispatcherItem::ButtonCyan => true,
+            DispatcherItem::Tea => false,
         }
     }
 }
