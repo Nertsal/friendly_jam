@@ -25,6 +25,7 @@ pub struct SolverState {
     pub current_level: usize,
     pub levels_completed: usize,
     pub trashcan_evil: bool,
+    pub solved_bubble_code: bool,
 }
 
 impl DispatcherState {
@@ -43,6 +44,7 @@ impl SolverState {
             current_level: 0,
             levels_completed: 0,
             trashcan_evil: true,
+            solved_bubble_code: false,
         }
     }
 

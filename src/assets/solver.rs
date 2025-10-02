@@ -33,6 +33,7 @@ pub struct SolverSprites {
     pub green_hint: Rc<PixelTexture>,
     pub bubble_tea: Rc<PixelTexture>,
     pub bubble_door: Rc<PixelTexture>,
+    pub bubble_code: Rc<PixelTexture>,
     #[load(list = "0..=2")]
     pub balls: Vec<Rc<PixelTexture>>,
     #[load(load_with = "load_gif(&manager, &base_path.join(\"explosion.gif\"))")]
@@ -115,6 +116,7 @@ pub enum SolverItemKind {
     Grandson,
     Trashcan,
     Recycle,
+    BubbleCode,
 }
 
 impl SolverSprites {
@@ -126,6 +128,7 @@ impl SolverSprites {
             SolverItemKind::Grandson => &self.grandson,
             SolverItemKind::Trashcan => &self.trashcan,
             SolverItemKind::Recycle => &self.recycle,
+            SolverItemKind::BubbleCode => &self.bubble_code,
         }
     }
 }

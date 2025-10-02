@@ -9,5 +9,15 @@
     platforms: [
     ],
     items: [
+        (
+            kind: BubbleCode,
+            collider: (
+                position: (8.0, 2.5),
+                shape: Rectangle(
+                    width: 4.0,
+                    height: 1.0,
+                ),
+            ),
+        ),
     ],
 )

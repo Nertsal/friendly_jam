@@ -4,6 +4,7 @@ use crate::{
     assets::{SolverItem, SolverItemKind},
     interop::{ClientConnection, ClientMessage, ServerMessage},
     model::*,
+    ui::layout::AreaOps,
 };
 
 use geng_utils::conversions::*;
@@ -45,6 +46,7 @@ struct SolverStateClient {
     explosion: Option<(vec2<FCoord>, FTime)>,
     grandson_spin: Option<Angle<FCoord>>,
     grandpa_drill: Option<FTime>,
+    bubble_code: String,
 }
 
 struct PlayerControl {
@@ -141,6 +143,7 @@ impl GameSolver {
                 explosion: None,
                 grandson_spin: None,
                 grandpa_drill: None,
+                bubble_code: String::new(),
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -237,17 +240,15 @@ impl GameSolver {
             .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
-        // Balls
-        for (ball, texture_i) in &self.client_state.bubble_balls {
-            let texture = assets
-                .solver
-                .sprites
-                .balls
-                .get(*texture_i)
-                .unwrap_or(&assets.solver.sprites.balls[0]);
-            geng_utils::texture::DrawTexture::new(texture)
-                .fit(ball.compute_aabb().as_f32(), vec2(0.5, 0.5))
-                .draw(&self.camera, &self.context.geng, framebuffer);
+        if self.state.current_level == 3 {
+            // Bubble door
+            if !self.state.solved_bubble_code
+                && let Some(door) = self.client_state.level_static_colliders.last()
+            {
+                geng_utils::texture::DrawTexture::new(&assets.solver.sprites.bubble_door)
+                    .fit_height(door.compute_aabb().as_f32(), 0.5)
+                    .draw(&self.camera, &self.context.geng, framebuffer);
+            }
         }
 
         // Platforms
@@ -299,9 +300,41 @@ impl GameSolver {
                 transform *= mat3::translate(vec2(0.0, -offset * 5.0)) * mat3::rotate(spin);
             }
 
-            geng_utils::texture::DrawTexture::new(texture)
+            let draw = geng_utils::texture::DrawTexture::new(texture)
                 .fit(item.collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
-                .transformed(transform)
+                .transformed(transform);
+            let target = draw.target;
+            draw.draw(&self.camera, &self.context.geng, framebuffer);
+
+            if let SolverItemKind::BubbleCode = item.kind {
+                let code = target;
+                let code = code.extend_symmetric(-code.size() * vec2(0.1, 0.15));
+                let font = self.context.geng.default_font();
+                for (pos, digit) in code
+                    .split_columns(4)
+                    .into_iter()
+                    .zip(self.client_state.bubble_code.chars())
+                {
+                    self.context.geng.draw2d().draw2d(
+                        framebuffer,
+                        &self.camera,
+                        &draw2d::Text::unit(&**font, digit.to_string(), assets.palette.text)
+                            .fit_into(pos),
+                    )
+                }
+            }
+        }
+
+        // Balls
+        for (ball, texture_i) in &self.client_state.bubble_balls {
+            let texture = assets
+                .solver
+                .sprites
+                .balls
+                .get(*texture_i)
+                .unwrap_or(&assets.solver.sprites.balls[0]);
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(ball.compute_aabb().as_f32(), vec2(0.5, 0.5))
                 .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
@@ -461,7 +494,7 @@ impl GameSolver {
                 position: vec2(5.0, 4.5).as_r32(),
                 rotation: Angle::from_degrees(15.0).as_r32(),
                 shape: Shape::Rectangle {
-                    width: r32(0.05),
+                    width: r32(0.07),
                     height: r32(9.0),
                 },
             });
@@ -469,17 +502,17 @@ impl GameSolver {
                 position: vec2(11.0, 9.0 - 3.3).as_r32(),
                 rotation: Angle::from_degrees(-15.0).as_r32(),
                 shape: Shape::Rectangle {
-                    width: r32(0.05),
+                    width: r32(0.07),
                     height: r32(4.5),
                 },
             });
             // Door
             self.client_state.level_static_colliders.push(Collider {
-                position: vec2(10.0, 9.0 - 7.2).as_r32(),
+                position: vec2(10.15, 9.0 - 7.05).as_r32(),
                 rotation: Angle::from_degrees(-15.0).as_r32(),
                 shape: Shape::Rectangle {
-                    width: r32(0.05),
-                    height: r32(2.0),
+                    width: r32(0.07),
+                    height: r32(2.4),
                 },
             });
 
@@ -647,12 +680,20 @@ impl GameSolver {
                     self.client_state.items.push(item);
                 }
             } else if let Some(i) = self.client_state.items.iter().position(|item| {
-                item.can_pickup
+                (item.can_pickup || item.kind == SolverItemKind::BubbleCode)
                     && item.collider.check(&self.client_state.player.collider)
                     && !(self.state.trashcan_evil && matches!(item.kind, SolverItemKind::Recycle))
-            }) {
-                // Pick up an item
-                self.client_state.picked_up_item = Some(self.client_state.items.swap_remove(i));
+            }) && let Some(item) = self.client_state.items.get(i)
+            {
+                if item.kind == SolverItemKind::BubbleCode {
+                    self.context
+                        .geng
+                        .window()
+                        .start_text_edit(&self.client_state.bubble_code);
+                } else {
+                    // Pick up an item
+                    self.client_state.picked_up_item = Some(self.client_state.items.swap_remove(i));
+                }
             }
         }
 
@@ -870,7 +911,7 @@ impl GameSolver {
             if let Some(collision) = player.collider.collide(ball) {
                 let velocity_offset =
                     collision.normal * vec2::dot(player.velocity, collision.normal);
-                if velocity_offset.len() > r32(9.0) {
+                if velocity_offset.len() > r32(7.0) {
                     remove_balls.push(ball_i);
                 }
                 player.collider.position -= collision.normal * collision.penetration;
@@ -1008,9 +1049,45 @@ impl geng::State for GameSolver {
             self.player_control.pickup = true;
         }
 
-        if let geng::Event::KeyPress { key: geng::Key::F5 } = event {
-            drop(assets);
-            self.reload_level();
+        match event {
+            geng::Event::EditText(text) => {
+                self.client_state.bubble_code.clear();
+                for char in text.chars() {
+                    if char.is_ascii_digit() {
+                        self.client_state.bubble_code.push(char);
+                        if self.client_state.bubble_code.len() >= 4 {
+                            self.context
+                                .geng
+                                .window()
+                                .start_text_edit(&self.client_state.bubble_code);
+                            break;
+                        }
+                    }
+                }
+            }
+            geng::Event::KeyPress { key } => match key {
+                geng::Key::F5 => {
+                    drop(assets);
+                    self.reload_level();
+                }
+                geng::Key::Escape => {
+                    self.context.geng.window().stop_text_edit();
+                }
+                geng::Key::Enter => {
+                    if self.state.current_level == 3
+                        && !self.state.solved_bubble_code
+                        && self.client_state.bubble_code == "4213"
+                    {
+                        self.context.geng.window().stop_text_edit();
+                        self.state.solved_bubble_code = true;
+                        self.client_state.level_static_colliders.pop();
+                        self.connection
+                            .send(ClientMessage::SyncSolverState(self.state.clone()));
+                    }
+                }
+                _ => {}
+            },
+            _ => (),
         }
     }
 
