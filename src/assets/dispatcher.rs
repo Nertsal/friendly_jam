@@ -83,9 +83,15 @@ pub enum DispatcherItem {
     TheSock,
     ButtonStation,
     Bfb,
-    ButtonSalad,
     ButtonYellow,
     ButtonGreen,
+    ButtonSalad,
+    ButtonPink,
+    ButtonBlue,
+    ButtonWhite,
+    ButtonPurple,
+    ButtonOrange,
+    ButtonCyan,
 }
 
 /// Positioning in screen-space with fixed 1920x1080 resolution.

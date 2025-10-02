@@ -188,9 +188,15 @@ impl GameDispatcher {
                         &sprites.button_big
                     }
                 }
-                DispatcherItem::ButtonSalad => button!("#ECFF00"),
                 DispatcherItem::ButtonYellow => button!("#FFFF00"),
                 DispatcherItem::ButtonGreen => button!("#00FF00"),
+                DispatcherItem::ButtonSalad => button!("#ECFF00"),
+                DispatcherItem::ButtonPink => button!("#FFC0CB"),
+                DispatcherItem::ButtonBlue => button!("#0022EE"),
+                DispatcherItem::ButtonWhite => button!("#FFFFFF"),
+                DispatcherItem::ButtonPurple => button!("#800080"),
+                DispatcherItem::ButtonOrange => button!("#FFA500"),
+                DispatcherItem::ButtonCyan => button!("#00EEEE"),
             };
             let size = positioning
                 .size
@@ -280,9 +286,15 @@ impl GameDispatcher {
                 draw.target = draw.target.extend_uniform(10.0);
             }
 
-            if let DispatcherItem::ButtonSalad
-            | DispatcherItem::ButtonYellow
-            | DispatcherItem::ButtonGreen = item
+            if let DispatcherItem::ButtonYellow
+            | DispatcherItem::ButtonGreen
+            | DispatcherItem::ButtonSalad
+            | DispatcherItem::ButtonPink
+            | DispatcherItem::ButtonBlue
+            | DispatcherItem::ButtonWhite
+            | DispatcherItem::ButtonPurple
+            | DispatcherItem::ButtonOrange
+            | DispatcherItem::ButtonCyan = item
             {
                 let mut draw_base = geng_utils::texture::DrawTexture::new(&sprites.button_base);
                 draw_base.target = draw.target;
@@ -458,9 +470,15 @@ impl GameDispatcher {
                             self.client_state.bfb_pressed = Some(FTime::ZERO);
                         }
                     }
-                    DispatcherItem::ButtonSalad
-                    | DispatcherItem::ButtonYellow
+                    DispatcherItem::ButtonYellow
                     | DispatcherItem::ButtonGreen
+                    | DispatcherItem::ButtonSalad
+                    | DispatcherItem::ButtonPink
+                    | DispatcherItem::ButtonBlue
+                    | DispatcherItem::ButtonWhite
+                    | DispatcherItem::ButtonPurple
+                    | DispatcherItem::ButtonOrange
+                    | DispatcherItem::ButtonCyan
                         if self.state.button_station_open =>
                     {
                         assets.sounds.button.play();
@@ -707,9 +725,15 @@ impl DispatcherItem {
             DispatcherItem::TheSock => true,
             DispatcherItem::ButtonStation => true,
             DispatcherItem::Bfb
-            | DispatcherItem::ButtonSalad
             | DispatcherItem::ButtonYellow
-            | DispatcherItem::ButtonGreen => true,
+            | DispatcherItem::ButtonGreen
+            | DispatcherItem::ButtonSalad
+            | DispatcherItem::ButtonPink
+            | DispatcherItem::ButtonBlue
+            | DispatcherItem::ButtonWhite
+            | DispatcherItem::ButtonPurple
+            | DispatcherItem::ButtonOrange
+            | DispatcherItem::ButtonCyan => true,
         }
     }
 }

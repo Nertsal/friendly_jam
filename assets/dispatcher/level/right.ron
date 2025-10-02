@@ -32,5 +32,41 @@
                 anchor: (1150, 800),
             ),
         ),
+        (
+            ButtonPink,
+            (
+                anchor: (770, 630),
+            )
+        ),
+        (
+            ButtonBlue,
+            (
+                anchor: (960, 630),
+            )
+        ),
+        (
+            ButtonWhite,
+            (
+                anchor: (1150, 630),
+            )
+        ),
+        (
+            ButtonPurple,
+            (
+                anchor: (770, 460),
+            )
+        ),
+        (
+            ButtonOrange,
+            (
+                anchor: (960, 460),
+            )
+        ),
+        (
+            ButtonCyan,
+            (
+                anchor: (1150, 460),
+            )
+        ),
     ],
 )
