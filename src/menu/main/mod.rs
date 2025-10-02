@@ -230,25 +230,34 @@ impl MainMenuUi {
             .get_root_or(|| IconWidget::new(atlas.menu()))
             .update(screen, context);
 
-        let create = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.55));
-        let join = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.4));
-        let code = screen.align_aabb(vec2(210.0, 80.0), vec2(0.4, 0.4));
-
+        let mut create = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.55));
         let button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Создать комнату")
         });
         button.text.options.color = assets.palette.text;
+        if create.contains(context.cursor.position) {
+            create = create.extend_symmetric(
+                vec2(atlas.button_background().size().as_f32().aspect(), 1.0) * 10.0,
+            );
+        }
         button.update(create, context);
         if button.state.mouse_left.clicked {
             state.action = Some(Action::CreateRoom);
         }
 
+        let mut join = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.4));
         let join_button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Присоединиться")
         });
         join_button.text.options.color = assets.palette.text;
+        if join.contains(context.cursor.position) {
+            join = join.extend_symmetric(
+                vec2(atlas.button_background().size().as_f32().aspect(), 1.0) * 10.0,
+            );
+        }
         join_button.update(join, context);
 
+        let code = screen.align_aabb(vec2(210.0, 80.0), vec2(0.4, 0.4));
         context
             .state
             .get_root_or(|| IconWidget::new(atlas.code_background()))

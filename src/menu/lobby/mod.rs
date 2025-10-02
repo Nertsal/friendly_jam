@@ -161,7 +161,8 @@ impl LobbyUi {
         context.screen = screen;
         context.font_size = screen.height() * 0.05;
         context.layout_size = screen.height() * 0.07;
-        let atlas = &context.context.assets.get().atlas;
+        let assets = context.context.assets.get();
+        let atlas = &assets.atlas;
 
         context
             .state
@@ -171,7 +172,7 @@ impl LobbyUi {
         let code = screen.align_aabb(vec2(560.0, 150.0), vec2(0.5, 0.63));
 
         let code_text = context.state.get_root_or(|| TextWidget::new(""));
-        code_text.options.color = Rgba::BLACK;
+        code_text.options.color = assets.palette.text;
         code_text.text = state.room_info.code.to_string().into();
         code_text.update(code, context);
 
