@@ -79,7 +79,9 @@ impl Lobby {
                 };
                 self.transition = Some(geng::state::Transition::Switch(state));
             }
-            ServerMessage::SyncDispatcherState(_) | ServerMessage::SyncSolverState(_) => {}
+            ServerMessage::SyncDispatcherState(_)
+            | ServerMessage::SyncSolverState(_)
+            | ServerMessage::SyncSolverPlayer(_) => {}
         }
     }
 }

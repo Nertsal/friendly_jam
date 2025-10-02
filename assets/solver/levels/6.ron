@@ -1,0 +1,13 @@
+(
+    door_entrance: false,
+    door_exit: false,
+    spawnpoint: (7.0, 3.0),
+    transition: (
+        min: (1000.0, 0.0),
+        max: (1001.0, 9.0),
+    ),
+    platforms: [
+    ],
+    items: [
+    ],
+)

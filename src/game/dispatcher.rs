@@ -3,11 +3,14 @@ use super::*;
 use crate::{
     assets::*,
     interop::{ClientConnection, ClientMessage, ServerMessage},
-    model::{DispatcherState, FTime, SolverState},
+    model::{DispatcherState, FTime, Player, PlayerAnimationState, SolverState},
     ui::layout::AreaOps,
 };
 
-use geng_utils::{conversions::Vec2RealConversions, interpolation::SecondOrderState};
+use geng_utils::{
+    conversions::{Aabb2RealConversions, Vec2RealConversions},
+    interpolation::SecondOrderState,
+};
 
 const SCREEN_SIZE: vec2<usize> = vec2(1920, 1080);
 
@@ -30,6 +33,7 @@ pub struct GameDispatcher {
     client_state: DispatcherStateClient,
     state: DispatcherState,
     solver_state: SolverState,
+    solver_player: Option<Player>,
     ui: DispatcherUi,
 }
 
@@ -104,6 +108,7 @@ impl GameDispatcher {
             },
             state: DispatcherState::new(),
             solver_state: SolverState::new(),
+            solver_player: None,
             ui: DispatcherUi {
                 items_layout: HashMap::new(),
                 monitor: Aabb2::ZERO,
@@ -391,6 +396,52 @@ impl GameDispatcher {
             }
         }
 
+        // Player
+        if let Some(player) = &self.solver_player
+            && let DispatcherViewSide::Front = self.client_state.active_side
+        {
+            let animation = |frames: &[Rc<crate::assets::PixelTexture>], frame_time: f32| {
+                let frame_time = r32(frame_time);
+                let frame = (player.animation_time / frame_time)
+                    .as_f32()
+                    .max(0.0)
+                    .floor() as usize
+                    % frames.len();
+                frames[frame].clone()
+            };
+            let texture = match player.animation_state() {
+                PlayerAnimationState::Idle => animation(&assets.solver.sprites.player.idle, 0.5),
+                PlayerAnimationState::Running => {
+                    animation(&assets.solver.sprites.player.running, 0.1)
+                }
+                PlayerAnimationState::Jumping => {
+                    let sprites = &assets.solver.sprites.player.jump;
+                    if player.velocity.y.as_f32() > 0.0 {
+                        sprites[0].clone()
+                    } else {
+                        sprites[1].clone()
+                    }
+                }
+            };
+            let flip = !player.facing_left;
+            geng_utils::texture::DrawTexture::new(&texture)
+                .transformed(mat3::scale(vec2(if flip { -1.0 } else { 1.0 }, 1.0)))
+                .fit_width(player.collider.compute_aabb().as_f32(), 0.0)
+                .draw(
+                    &Camera2d {
+                        center: vec2(8.0, 4.5),
+                        rotation: Angle::ZERO,
+                        fov: Camera2dFov::Cover {
+                            width: 16.0,
+                            height: 9.0,
+                            scale: 1.0,
+                        },
+                    },
+                    &self.context.geng,
+                    framebuffer,
+                );
+        }
+
         // Book
         if let Focus::Book = self.client_state.focus {
             let book_pos =
@@ -596,6 +647,7 @@ impl GameDispatcher {
             ServerMessage::Error(error) => log::error!("Server error: {error}"),
             ServerMessage::SyncDispatcherState(dispatcher_state) => self.state = dispatcher_state,
             ServerMessage::SyncSolverState(solver_state) => self.solver_state = solver_state,
+            ServerMessage::SyncSolverPlayer(player) => self.solver_player = Some(player),
         }
     }
 

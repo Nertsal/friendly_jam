@@ -28,6 +28,32 @@ pub struct SolverState {
     pub solved_bubble_code: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Player {
+    pub collider: Collider,
+    pub velocity: vec2<FCoord>,
+    pub state: PlayerState,
+    pub control_timeout: Option<FTime>,
+    pub facing_left: bool,
+    pub can_hold_jump: bool,
+    pub coyote_time: Option<FTime>,
+    pub jump_buffer: Option<FTime>,
+    pub animation_time: FTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PlayerState {
+    Grounded,
+    Airborn,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlayerAnimationState {
+    Idle,
+    Running,
+    Jumping,
+}
+
 impl DispatcherState {
     pub fn new() -> Self {
         Self {

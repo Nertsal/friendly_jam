@@ -82,31 +82,6 @@ impl Default for PlayerControl {
     }
 }
 
-struct Player {
-    pub collider: Collider,
-    pub velocity: vec2<FCoord>,
-    pub state: PlayerState,
-    pub control_timeout: Option<FTime>,
-    pub facing_left: bool,
-    pub can_hold_jump: bool,
-    pub coyote_time: Option<FTime>,
-    pub jump_buffer: Option<FTime>,
-    pub animation_time: FTime,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-enum PlayerState {
-    Grounded,
-    Airborn,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum PlayerAnimationState {
-    Idle,
-    Running,
-    Jumping,
-}
-
 impl GameSolver {
     pub fn new(context: &Context, connection: ClientConnection, test: Option<usize>) -> Self {
         let assets = context.assets.get();
@@ -235,12 +210,19 @@ impl GameSolver {
             geng_utils::texture::DrawTexture::new(texture)
                 .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
                 .draw(&self.camera, &self.context.geng, framebuffer);
+        } else if self.state.current_level == 5 {
+            let texture = &assets.solver.sprites.dispatcher;
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
         // Bounds
-        geng_utils::texture::DrawTexture::new(&assets.solver.sprites.level_bounds)
-            .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
-            .draw(&self.camera, &self.context.geng, framebuffer);
+        if self.state.current_level != 5 {
+            geng_utils::texture::DrawTexture::new(&assets.solver.sprites.level_bounds)
+                .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
 
         // Doors
         if level.door_entrance {
@@ -792,6 +774,12 @@ impl GameSolver {
                 && !(self.state.trashcan_evil && matches!(item.kind, SolverItemKind::Recycle))
         });
 
+        if self.state.current_level == 5 {
+            self.connection.send(ClientMessage::SyncSolverPlayer(
+                self.client_state.player.clone(),
+            ));
+        }
+
         self.player_control.take();
     }
 
@@ -1041,6 +1029,7 @@ impl GameSolver {
             ServerMessage::Ping
             | ServerMessage::RoomJoined(..)
             | ServerMessage::StartGame(..)
+            | ServerMessage::SyncSolverPlayer(_)
             | ServerMessage::YourToken(_) => {}
             ServerMessage::Error(error) => log::error!("Server error: {error}"),
             ServerMessage::SyncDispatcherState(dispatcher_state) => {
@@ -1222,7 +1211,7 @@ impl Player {
         )
     }
 
-    fn animation_state(&self) -> PlayerAnimationState {
+    pub fn animation_state(&self) -> PlayerAnimationState {
         match self.state {
             PlayerState::Grounded => {
                 if self.velocity.x.abs() > r32(0.01) {
