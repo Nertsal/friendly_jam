@@ -1,0 +1,36 @@
+#![enable(implicit_some)]
+(
+    items: [
+        (
+            ButtonStation,
+            (
+                anchor: (1320, 950),
+                alignment: (1, 1),
+            ),
+        ),
+        (
+            Bfb,
+            (
+                anchor: (1560, 400),
+            ),
+        ),
+        (
+            ButtonSalad,
+            (
+                anchor: (770, 800),
+            ),
+        ),
+        (
+            ButtonYellow,
+            (
+                anchor: (960, 800),
+            ),
+        ),
+        (
+            ButtonGreen,
+            (
+                anchor: (1150, 800),
+            ),
+        ),
+    ],
+)

@@ -1,0 +1,15 @@
+(
+    buffer_time: 0.08,
+    coyote_time: 0.08,
+    gravity: (0.0, -20.0),
+    fall_multiplier: 5.0,
+    free_fall_speed: 12.0,
+    low_multiplier: 7.0,
+    move_speed: 7.0,
+    acceleration_ground: 50.0,
+    acceleration_air: 30.0,
+    deceleration_ground: 50.0,
+    deceleration_air: 30.0,
+    jump_push: 1.0,
+    jump_strength: 9.0,
+)

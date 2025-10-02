@@ -1,0 +1,43 @@
+#![enable(implicit_some)]
+(
+    items: [
+        (
+            Table,
+            (
+                anchor: (0, 0),
+                alignment: (0, 0),
+            ),
+        ),
+        (
+            RealMouse,
+            (
+                anchor: (870, 160),
+            ),
+        ),
+        (
+            Cactus,
+            (
+                anchor: (1040, 370),
+            ),
+        ),
+        (
+            Book,
+            (
+                anchor: (1420, 240),
+            ),
+        ),
+        (
+            TheSock,
+            (
+                anchor: (1815, 180),
+            ),
+        ),
+        (
+            Monitor,
+            (
+                anchor: (655, 480),
+                size: (549, 513),
+            ),
+        ),
+    ],
+)
