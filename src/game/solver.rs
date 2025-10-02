@@ -39,6 +39,7 @@ struct SolverStateClient {
     door_entrance: Collider,
     door_exit: Collider,
     platforms: Vec<Collider>,
+    bubble_balls: Vec<(Collider, usize)>,
     items: Vec<SolverItem>,
     picked_up_item: Option<SolverItem>,
     explosion: Option<(vec2<FCoord>, FTime)>,
@@ -134,6 +135,7 @@ impl GameSolver {
                 door_entrance: Collider::aabb(Aabb2::ZERO),
                 door_exit: Collider::aabb(Aabb2::ZERO),
                 platforms: Vec::new(),
+                bubble_balls: Vec::new(),
                 items: Vec::new(),
                 picked_up_item: None,
                 explosion: None,
@@ -233,6 +235,19 @@ impl GameSolver {
             })
             .fit_height(self.client_state.door_exit.compute_aabb().as_f32(), 1.0)
             .draw(&self.camera, &self.context.geng, framebuffer);
+        }
+
+        // Balls
+        for (ball, texture_i) in &self.client_state.bubble_balls {
+            let texture = assets
+                .solver
+                .sprites
+                .balls
+                .get(*texture_i)
+                .unwrap_or(&assets.solver.sprites.balls[0]);
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(ball.compute_aabb().as_f32(), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
         // Platforms
@@ -455,7 +470,7 @@ impl GameSolver {
                 rotation: Angle::from_degrees(-15.0).as_r32(),
                 shape: Shape::Rectangle {
                     width: r32(0.05),
-                    height: r32(4.0),
+                    height: r32(4.5),
                 },
             });
             // Door
@@ -467,6 +482,56 @@ impl GameSolver {
                     height: r32(2.0),
                 },
             });
+
+            // Bubbles
+            let ball = &Collider::circle(vec2::ZERO, r32(0.5));
+            self.client_state.bubble_balls = (0..4)
+                .flat_map(|x| {
+                    (0..6).map(move |y| {
+                        let mut rng = thread_rng();
+                        let mut ball = ball.clone();
+                        ball.position = vec2(6.5, 1.5).as_r32()
+                            + vec2(x, y).as_r32()
+                            + vec2(rng.gen_range(-0.01..=0.01), rng.gen_range(-0.01..=0.01))
+                                .as_r32();
+                        (ball, rng.gen_range(0..=3))
+                    })
+                })
+                .collect();
+        }
+    }
+
+    fn update_balls(&mut self, delta_time: FTime) {
+        for (ball, _) in &mut self.client_state.bubble_balls {
+            let mut any_collision = false;
+            for static_col in self
+                .client_state
+                .level_static_colliders
+                .iter()
+                .chain(&self.client_state.platforms)
+            {
+                if let Some(collision) = ball.collide(static_col) {
+                    ball.position -= collision.normal * collision.penetration;
+                    any_collision = true;
+                }
+            }
+            if !any_collision {
+                ball.position += vec2(0.0, -2.0).as_r32() * delta_time;
+            }
+        }
+
+        let items_count = self.client_state.bubble_balls.len();
+        for i in 0..items_count {
+            for j in i + 1..items_count {
+                if let Ok([(ball, _), (other, _)]) =
+                    self.client_state.bubble_balls.get_disjoint_mut([i, j])
+                    && let Some(collision) = ball.collide(other)
+                {
+                    let offset = collision.normal * collision.penetration * r32(0.5);
+                    ball.position -= offset;
+                    other.position += offset;
+                }
+            }
         }
     }
 
@@ -797,6 +862,24 @@ impl GameSolver {
 
     fn player_update_state(&mut self) {
         self.player_check_ground();
+
+        // Bubbles
+        let player = &mut self.client_state.player;
+        let mut remove_balls = Vec::new();
+        for (ball_i, (ball, _)) in self.client_state.bubble_balls.iter().enumerate() {
+            if let Some(collision) = player.collider.collide(ball) {
+                let velocity_offset =
+                    collision.normal * vec2::dot(player.velocity, collision.normal);
+                if velocity_offset.len() > r32(9.0) {
+                    remove_balls.push(ball_i);
+                }
+                player.collider.position -= collision.normal * collision.penetration;
+                player.velocity -= velocity_offset;
+            }
+        }
+        for i in remove_balls.into_iter().rev() {
+            self.client_state.bubble_balls.swap_remove(i);
+        }
     }
 
     fn check_ground_collision(&self, collider: &Collider) -> Option<Collision> {
@@ -804,6 +887,7 @@ impl GameSolver {
             .level_static_colliders
             .iter()
             .chain(&self.client_state.platforms)
+            .chain(self.client_state.bubble_balls.iter().map(|(ball, _)| ball))
             .filter_map(|static_col| collider.collide(static_col))
             .max_by_key(|col| col.penetration)
     }
@@ -910,6 +994,7 @@ impl geng::State for GameSolver {
 
         self.update_player(delta_time);
         self.update_items(delta_time);
+        self.update_balls(delta_time);
     }
 
     fn handle_event(&mut self, event: geng::Event) {
