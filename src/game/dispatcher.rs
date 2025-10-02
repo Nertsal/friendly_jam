@@ -26,6 +26,7 @@ pub struct GameDispatcher {
     camera: Camera2d,
     camera_fov: SecondOrderState<f32>,
     camera_center: SecondOrderState<vec2<f32>>,
+    solver_camera: Camera2d,
 
     cursor_position_raw: vec2<f64>,
     cursor_position_game: vec2<f32>,
@@ -61,6 +62,7 @@ pub struct DispatcherStateClient {
     bfb_pressed: Option<FTime>,
     buttons_pressed: HashMap<DispatcherItem, FTime>,
     bubble_buttons: usize,
+    explosion: Option<(vec2<f32>, FTime)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,6 +94,15 @@ impl GameDispatcher {
             },
             camera_fov: SecondOrderState::new(1.5, 1.0, 0.0, SCREEN_SIZE.y as f32),
             camera_center: SecondOrderState::new(1.5, 1.0, 0.0, SCREEN_SIZE.as_f32() / 2.0),
+            solver_camera: Camera2d {
+                center: vec2(8.0, 4.5),
+                rotation: Angle::ZERO,
+                fov: Camera2dFov::Cover {
+                    width: 16.0,
+                    height: 9.0,
+                    scale: 1.0,
+                },
+            },
 
             cursor_position_raw: vec2::ZERO,
             cursor_position_game: vec2::ZERO,
@@ -105,6 +116,7 @@ impl GameDispatcher {
                 bfb_pressed: None,
                 buttons_pressed: HashMap::new(),
                 bubble_buttons: 0,
+                explosion: None,
             },
             state: DispatcherState::new(),
             solver_state: SolverState::new(),
@@ -397,7 +409,8 @@ impl GameDispatcher {
         }
 
         // Player
-        if let Some(player) = &self.solver_player
+        if !self.solver_state.popped
+            && let Some(player) = &self.solver_player
             && let DispatcherViewSide::Front = self.client_state.active_side
         {
             let animation = |frames: &[Rc<crate::assets::PixelTexture>], frame_time: f32| {
@@ -424,22 +437,20 @@ impl GameDispatcher {
                 }
             };
             let flip = !player.facing_left;
+
+            let mut pos = player.collider.compute_aabb().as_f32();
+            if pos.contains(
+                self.solver_camera
+                    .screen_to_world(SCREEN_SIZE.as_f32(), self.cursor_position_game),
+            ) {
+                pos = pos.extend_uniform(0.3);
+                self.client_state.hovering_smth = true;
+            }
+
             geng_utils::texture::DrawTexture::new(&texture)
                 .transformed(mat3::scale(vec2(if flip { -1.0 } else { 1.0 }, 1.0)))
-                .fit_width(player.collider.compute_aabb().as_f32(), 0.0)
-                .draw(
-                    &Camera2d {
-                        center: vec2(8.0, 4.5),
-                        rotation: Angle::ZERO,
-                        fov: Camera2dFov::Cover {
-                            width: 16.0,
-                            height: 9.0,
-                            scale: 1.0,
-                        },
-                    },
-                    &self.context.geng,
-                    framebuffer,
-                );
+                .fit_width(pos, 0.0)
+                .draw(&self.solver_camera, &self.context.geng, framebuffer);
         }
 
         // Book
@@ -461,6 +472,20 @@ impl GameDispatcher {
                 &draw2d::Text::unit(&**font, &assets.dispatcher.book_text, assets.palette.text)
                     .fit_into(book_pos),
             );
+        }
+
+        // Explosion
+        if let Some((pos, time)) = self.client_state.explosion {
+            let frames = &assets.solver.sprites.explosion;
+            let frame = (time.as_f32() * frames.len() as f32).floor() as usize;
+            if let Some(frame) = frames.get(frame) {
+                geng_utils::texture::DrawTexture::new(&frame.texture)
+                    .fit(
+                        Aabb2::point(pos.as_f32()).extend_uniform(100.0),
+                        vec2(0.5, 0.5),
+                    )
+                    .draw(&self.camera, &self.context.geng, framebuffer);
+            }
         }
     }
 
@@ -571,6 +596,27 @@ impl GameDispatcher {
             } else if self.ui.user_icon.contains(self.cursor_position_game) {
                 assets.sounds.click.play();
                 // TODO: smth
+            }
+        }
+
+        if let DispatcherViewSide::Front = self.client_state.active_side
+            && let Some(player) = &self.solver_player
+        {
+            let pos = player.collider.compute_aabb().as_f32();
+            if pos.contains(
+                self.solver_camera
+                    .screen_to_world(SCREEN_SIZE.as_f32(), self.cursor_position_game),
+            ) {
+                self.solver_state.popped = true;
+                self.connection
+                    .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
+                let pos = match self
+                    .solver_camera
+                    .world_to_screen(SCREEN_SIZE.as_f32(), player.collider.position.as_f32())
+                {
+                    Ok(v) | Err(v) => v,
+                };
+                self.client_state.explosion = Some((pos, FTime::ZERO));
             }
         }
     }
@@ -723,6 +769,17 @@ impl geng::State for GameDispatcher {
 
         let delta_time = FTime::new(delta_time);
         self.update_buttons(delta_time);
+
+        if let Some((_, timer)) = &mut self.client_state.explosion {
+            *timer += delta_time;
+            if timer.as_f32() > 1.0 {
+                if self.solver_state.popped {
+                    panic!("тебе конец, и игре тоже");
+                }
+
+                panic!("ты взорвался");
+            }
+        }
     }
 
     fn handle_event(&mut self, event: geng::Event) {

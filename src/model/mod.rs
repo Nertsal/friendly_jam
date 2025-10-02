@@ -26,6 +26,7 @@ pub struct SolverState {
     pub levels_completed: usize,
     pub trashcan_evil: bool,
     pub solved_bubble_code: bool,
+    pub popped: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,6 +72,7 @@ impl SolverState {
             levels_completed: 0,
             trashcan_evil: true,
             solved_bubble_code: false,
+            popped: false,
         }
     }
 

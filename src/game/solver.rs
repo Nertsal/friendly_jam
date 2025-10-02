@@ -348,33 +348,37 @@ impl GameSolver {
         }
 
         // Player
-        let player = &self.client_state.player;
-        let animation = |frames: &[Rc<crate::assets::PixelTexture>], frame_time: f32| {
-            let frame_time = r32(frame_time);
-            let frame = (player.animation_time / frame_time)
-                .as_f32()
-                .max(0.0)
-                .floor() as usize
-                % frames.len();
-            frames[frame].clone()
-        };
-        let texture = match player.animation_state() {
-            PlayerAnimationState::Idle => animation(&assets.solver.sprites.player.idle, 0.5),
-            PlayerAnimationState::Running => animation(&assets.solver.sprites.player.running, 0.1),
-            PlayerAnimationState::Jumping => {
-                let sprites = &assets.solver.sprites.player.jump;
-                if player.velocity.y > FCoord::ZERO {
-                    sprites[0].clone()
-                } else {
-                    sprites[1].clone()
+        if !self.state.popped {
+            let player = &self.client_state.player;
+            let animation = |frames: &[Rc<crate::assets::PixelTexture>], frame_time: f32| {
+                let frame_time = r32(frame_time);
+                let frame = (player.animation_time / frame_time)
+                    .as_f32()
+                    .max(0.0)
+                    .floor() as usize
+                    % frames.len();
+                frames[frame].clone()
+            };
+            let texture = match player.animation_state() {
+                PlayerAnimationState::Idle => animation(&assets.solver.sprites.player.idle, 0.5),
+                PlayerAnimationState::Running => {
+                    animation(&assets.solver.sprites.player.running, 0.1)
                 }
-            }
-        };
-        let flip = !player.facing_left;
-        geng_utils::texture::DrawTexture::new(&texture)
-            .transformed(mat3::scale(vec2(if flip { -1.0 } else { 1.0 }, 1.0)))
-            .fit_width(player.collider.compute_aabb().as_f32(), 0.0)
-            .draw(&self.camera, &self.context.geng, framebuffer);
+                PlayerAnimationState::Jumping => {
+                    let sprites = &assets.solver.sprites.player.jump;
+                    if player.velocity.y > FCoord::ZERO {
+                        sprites[0].clone()
+                    } else {
+                        sprites[1].clone()
+                    }
+                }
+            };
+            let flip = !player.facing_left;
+            geng_utils::texture::DrawTexture::new(&texture)
+                .transformed(mat3::scale(vec2(if flip { -1.0 } else { 1.0 }, 1.0)))
+                .fit_width(player.collider.compute_aabb().as_f32(), 0.0)
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
 
         // Held item
         if let Some(item) = &self.client_state.picked_up_item {
@@ -1063,6 +1067,11 @@ impl geng::State for GameSolver {
             }
         }
 
+        if self.state.popped && self.client_state.explosion.is_none() {
+            self.client_state.explosion =
+                Some((self.client_state.player.collider.position, FTime::ZERO));
+        }
+
         if let Some(spin) = &mut self.client_state.grandson_spin {
             *spin += Angle::from_degrees(r32(360.0) * delta_time);
             if spin.as_degrees().as_f32() > 360.0 {
@@ -1086,6 +1095,10 @@ impl geng::State for GameSolver {
         if let Some((pos, timer)) = &mut self.client_state.explosion {
             *timer += delta_time;
             if timer.as_f32() > 1.0 {
+                if self.state.popped {
+                    panic!("тебе конец, и игре тоже");
+                }
+
                 if (self.client_state.player.collider.position - *pos)
                     .len()
                     .as_f32()
