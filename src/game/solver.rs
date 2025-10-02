@@ -41,7 +41,7 @@ struct SolverStateClient {
     explosion: Option<(vec2<FCoord>, FTime)>,
     grandson_spin: Option<Angle<FCoord>>,
     grandpa_drill: Option<FTime>,
-    bubble_code: String,
+    bubble_code: Vec<usize>,
     interact_item: Option<usize>,
     projectiles: Vec<Projectile>,
     fish_cooldown: FTime,
@@ -116,7 +116,7 @@ impl GameSolver {
                 explosion: None,
                 grandson_spin: None,
                 grandpa_drill: None,
-                bubble_code: String::new(),
+                bubble_code: Vec::new(),
                 interact_item: None,
                 projectiles: Vec::new(),
                 fish_cooldown: FTime::new(1.0),
@@ -303,10 +303,10 @@ impl GameSolver {
                 let code = target;
                 let code = code.extend_symmetric(-code.size() * vec2(0.1, 0.15));
                 let font = self.context.geng.default_font();
-                for (pos, digit) in code
+                for (pos, &digit) in code
                     .split_columns(4)
                     .into_iter()
-                    .zip(self.client_state.bubble_code.chars())
+                    .zip(&self.client_state.bubble_code)
                 {
                     self.context.geng.draw2d().draw2d(
                         framebuffer,
@@ -741,10 +741,6 @@ impl GameSolver {
                 && let Some(item) = self.client_state.items.get(i)
             {
                 if item.kind == SolverItemKind::BubbleCode {
-                    self.context
-                        .geng
-                        .window()
-                        .start_text_edit(&self.client_state.bubble_code);
                 } else {
                     // Pick up an item
                     self.client_state.picked_up_item = Some(self.client_state.items.swap_remove(i));
@@ -1053,6 +1049,36 @@ impl GameSolver {
         log::info!("Game restart: {message}");
         self.reload_level();
     }
+
+    fn press_enter(&mut self) {
+        if self.state.current_level == 3
+            && !self.state.solved_bubble_code
+            && self.client_state.bubble_code == vec![4, 2, 1, 3]
+        {
+            self.context.geng.window().stop_text_edit();
+            self.state.solved_bubble_code = true;
+            self.client_state.level_static_colliders.pop();
+            self.connection
+                .send(ClientMessage::SyncSolverState(self.state.clone()));
+        }
+    }
+
+    fn press_escape(&mut self) {}
+
+    fn press_backspace(&mut self) {
+        if self.state.current_level == 3 && !self.state.solved_bubble_code {
+            self.client_state.bubble_code.pop();
+        }
+    }
+
+    fn press_digit(&mut self, digit: usize) {
+        if self.state.current_level == 3
+            && !self.state.solved_bubble_code
+            && self.client_state.bubble_code.len() < 4
+        {
+            self.client_state.bubble_code.push(digit);
+        }
+    }
 }
 
 impl geng::State for GameSolver {
@@ -1146,45 +1172,27 @@ impl geng::State for GameSolver {
             self.player_control.pickup = true;
         }
 
-        match event {
-            geng::Event::EditText(text) => {
-                self.client_state.bubble_code.clear();
-                for char in text.chars() {
-                    if char.is_ascii_digit() {
-                        self.client_state.bubble_code.push(char);
-                        if self.client_state.bubble_code.len() >= 4 {
-                            self.context
-                                .geng
-                                .window()
-                                .start_text_edit(&self.client_state.bubble_code);
-                            break;
-                        }
-                    }
-                }
-            }
-            geng::Event::KeyPress { key } => match key {
+        drop(assets);
+        if let geng::Event::KeyPress { key } = event {
+            match key {
                 geng::Key::F5 => {
-                    drop(assets);
                     self.reload_level();
                 }
-                geng::Key::Escape => {
-                    self.context.geng.window().stop_text_edit();
-                }
-                geng::Key::Enter => {
-                    if self.state.current_level == 3
-                        && !self.state.solved_bubble_code
-                        && self.client_state.bubble_code == "4213"
-                    {
-                        self.context.geng.window().stop_text_edit();
-                        self.state.solved_bubble_code = true;
-                        self.client_state.level_static_colliders.pop();
-                        self.connection
-                            .send(ClientMessage::SyncSolverState(self.state.clone()));
-                    }
-                }
+                geng::Key::Escape => self.press_escape(),
+                geng::Key::Backspace => self.press_backspace(),
+                geng::Key::Enter => self.press_enter(),
+                geng::Key::Digit0 => self.press_digit(0),
+                geng::Key::Digit1 => self.press_digit(1),
+                geng::Key::Digit2 => self.press_digit(2),
+                geng::Key::Digit3 => self.press_digit(3),
+                geng::Key::Digit4 => self.press_digit(4),
+                geng::Key::Digit5 => self.press_digit(5),
+                geng::Key::Digit6 => self.press_digit(6),
+                geng::Key::Digit7 => self.press_digit(7),
+                geng::Key::Digit8 => self.press_digit(8),
+                geng::Key::Digit9 => self.press_digit(9),
                 _ => {}
-            },
-            _ => (),
+            }
         }
     }
 
