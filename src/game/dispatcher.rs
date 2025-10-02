@@ -899,6 +899,7 @@ impl GameDispatcher {
                 self.connection.send(ClientMessage::CrashOther(
                     "твой друг нажал на большую красную кнопку".into(),
                 ));
+                self.client_state.bfb_pressed = None;
             }
         }
         for (item, time) in &mut self.client_state.buttons_pressed {
