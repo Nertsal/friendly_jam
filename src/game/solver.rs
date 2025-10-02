@@ -47,6 +47,7 @@ struct SolverStateClient {
     grandson_spin: Option<Angle<FCoord>>,
     grandpa_drill: Option<FTime>,
     bubble_code: String,
+    interact_item: Option<usize>,
 }
 
 struct PlayerControl {
@@ -144,6 +145,7 @@ impl GameSolver {
                 grandson_spin: None,
                 grandpa_drill: None,
                 bubble_code: String::new(),
+                interact_item: None,
             },
             state: SolverState::new(),
             dispatcher_state: DispatcherState::new(),
@@ -380,6 +382,17 @@ impl GameSolver {
             collider.position = self.client_state.player.collider.position + dir * r32(0.5);
             geng_utils::texture::DrawTexture::new(texture)
                 .fit(collider.compute_aabb().as_f32(), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
+
+        // Interact hint
+        if let Some(i) = self.client_state.interact_item
+            && let Some(item) = self.client_state.items.get(i)
+        {
+            let pos = item.collider.compute_aabb().top_right();
+            let pos = Aabb2::point(pos.as_f32()).extend_positive(vec2(1.0, 1.0));
+            geng_utils::texture::DrawTexture::new(&assets.solver.sprites.interact)
+                .fit(pos, vec2(0.0, 0.0))
                 .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
@@ -679,11 +692,8 @@ impl GameSolver {
                 if !disappear {
                     self.client_state.items.push(item);
                 }
-            } else if let Some(i) = self.client_state.items.iter().position(|item| {
-                (item.can_pickup || item.kind == SolverItemKind::BubbleCode)
-                    && item.collider.check(&self.client_state.player.collider)
-                    && !(self.state.trashcan_evil && matches!(item.kind, SolverItemKind::Recycle))
-            }) && let Some(item) = self.client_state.items.get(i)
+            } else if let Some(i) = self.client_state.interact_item
+                && let Some(item) = self.client_state.items.get(i)
             {
                 if item.kind == SolverItemKind::BubbleCode {
                     self.context
@@ -710,6 +720,12 @@ impl GameSolver {
 
         self.check_transition();
         self.check_out_of_bounds();
+
+        self.client_state.interact_item = self.client_state.items.iter().position(|item| {
+            (item.can_pickup || item.kind == SolverItemKind::BubbleCode)
+                && item.collider.check(&self.client_state.player.collider)
+                && !(self.state.trashcan_evil && matches!(item.kind, SolverItemKind::Recycle))
+        });
 
         self.player_control.take();
     }

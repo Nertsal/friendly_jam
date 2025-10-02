@@ -15,6 +15,7 @@ pub struct SolverAssets {
 
 #[derive(geng::asset::Load)]
 pub struct SolverSprites {
+    pub interact: Rc<PixelTexture>,
     pub level_bounds: Rc<PixelTexture>,
     pub door_open: Rc<PixelTexture>,
     pub door_closed: Rc<PixelTexture>,
