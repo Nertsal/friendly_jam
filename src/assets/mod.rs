@@ -54,6 +54,8 @@ pub struct SoundAssets {
     #[load(ext = "mp3")]
     pub cactus: Rc<geng::Sound>,
     // pub the_sock: Rc<geng::Sound>,
+    #[load(ext = "mp3", list = "0..=2")]
+    pub pop: Vec<Rc<geng::Sound>>,
 }
 
 #[derive(geng::asset::Load)]

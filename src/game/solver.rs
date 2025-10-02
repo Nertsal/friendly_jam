@@ -991,6 +991,16 @@ impl GameSolver {
                 player.velocity -= velocity_offset;
             }
         }
+        if !remove_balls.is_empty() {
+            self.context
+                .assets
+                .get()
+                .sounds
+                .pop
+                .choose(&mut thread_rng())
+                .unwrap()
+                .play();
+        }
         for i in remove_balls.into_iter().rev() {
             self.client_state.bubble_balls.swap_remove(i);
         }
