@@ -43,6 +43,9 @@ pub struct DispatcherSprites {
     pub file_window: Rc<PixelTexture>,
 
     pub novella: NovellaSprites,
+    #[load(list = "0..=9")]
+    pub memes: Vec<Rc<PixelTexture>>,
+    pub meme_folder: Rc<PixelTexture>,
 }
 
 #[derive(geng::asset::Load)]
