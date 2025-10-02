@@ -113,6 +113,7 @@ impl ServerState {
                 .players
                 .iter()
                 .position(|(_, token)| *token == client.token)
+            && let RoomState::RoleSelection { .. } = room.state
         {
             room.players.remove(i);
         }
@@ -180,8 +181,13 @@ impl ServerState {
                             }
                         }
                         RoomState::Game(state) => {
-                            if room.players.iter().any(|(_, token)| *token == client.token) {
+                            if let Some((id, _)) = room
+                                .players
+                                .iter_mut()
+                                .find(|(_, token)| *token == client.token)
+                            {
                                 // Join back
+                                *id = client_id;
                                 client.room = Some(code.clone());
                                 client.sender.send(ServerMessage::RoomJoined(room.info()));
                                 client

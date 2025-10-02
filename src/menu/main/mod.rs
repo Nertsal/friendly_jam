@@ -173,6 +173,7 @@ impl geng::State for MainMenu {
                     ))
                 }
             };
+            self.context.geng.window().stop_text_edit();
             return Some(geng::state::Transition::Push(state));
         }
 
