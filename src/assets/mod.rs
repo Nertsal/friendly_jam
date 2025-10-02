@@ -65,7 +65,9 @@ pub struct ShaderAssets {
 friendly_derive::texture_atlas!(pub SpritesAtlas {
     white,
 
+    menu,
     button_background,
+    code_background,
     lobby,
     think0,
     think1,

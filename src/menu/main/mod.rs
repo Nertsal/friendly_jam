@@ -176,7 +176,7 @@ impl geng::State for MainMenu {
     }
 
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
-        ugli::clear(framebuffer, Some(Rgba::BLACK), Some(1.0), None);
+        ugli::clear(framebuffer, Some(Rgba::WHITE), Some(1.0), None);
 
         self.ui_context.state.frame_start();
         self.ui_context.geometry.update(framebuffer.size());
@@ -222,15 +222,22 @@ impl MainMenuUi {
         context.screen = screen;
         context.font_size = screen.height() * 0.05;
         context.layout_size = screen.height() * 0.07;
-        let atlas = &context.context.assets.get().atlas;
+        let assets = context.context.assets.get();
+        let atlas = &assets.atlas;
 
-        let mut create = screen;
-        let mut join = create.split_bottom(0.5);
-        let code = join.split_right(0.5);
+        context
+            .state
+            .get_root_or(|| IconWidget::new(atlas.menu()))
+            .update(screen, context);
+
+        let create = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.55));
+        let join = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.4));
+        let code = screen.align_aabb(vec2(210.0, 80.0), vec2(0.4, 0.4));
 
         let button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Создать комнату")
         });
+        button.text.options.color = assets.palette.text;
         button.update(create, context);
         if button.state.mouse_left.clicked {
             state.action = Some(Action::CreateRoom);
@@ -239,10 +246,16 @@ impl MainMenuUi {
         let join_button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Присоединиться")
         });
+        join_button.text.options.color = assets.palette.text;
         join_button.update(join, context);
 
+        context
+            .state
+            .get_root_or(|| IconWidget::new(atlas.code_background()))
+            .update(code, context);
         let code_input = context.state.get_root_or(|| InputWidget::new(""));
         code_input.update(code, context);
+        code_input.name.options.color = assets.palette.text;
 
         if join_button.state.mouse_left.clicked {
             state.action = Some(Action::Join(code_input.raw.clone()));
