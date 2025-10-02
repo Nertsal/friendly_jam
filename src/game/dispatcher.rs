@@ -45,6 +45,9 @@ struct DispatcherUi {
     login_code: Vec<Aabb2<f32>>,
     user_icon: Aabb2<f32>,
     files: Vec<Aabb2<f32>>,
+    meme_folder: Option<Aabb2<f32>>,
+    meme_prev: Aabb2<f32>,
+    meme_next: Aabb2<f32>,
     opened_file: Aabb2<f32>,
 
     button_station_inside: Aabb2<f32>,
@@ -59,6 +62,7 @@ pub struct DispatcherStateClient {
     focus: Focus,
     login_code: Vec<usize>,
     opened_file: Option<usize>,
+    opened_meme: Option<usize>,
     bfb_pressed: Option<FTime>,
     buttons_pressed: HashMap<DispatcherItem, FTime>,
     bubble_buttons: usize,
@@ -136,6 +140,7 @@ impl GameDispatcher {
                 focus: Focus::Whole,
                 login_code: vec![],
                 opened_file: None,
+                opened_meme: None,
                 bfb_pressed: None,
                 buttons_pressed: HashMap::new(),
                 bubble_buttons: 0,
@@ -152,6 +157,9 @@ impl GameDispatcher {
                 login_code: vec![],
                 user_icon: Aabb2::ZERO,
                 files: vec![],
+                meme_folder: None,
+                meme_prev: Aabb2::ZERO,
+                meme_next: Aabb2::ZERO,
                 opened_file: Aabb2::ZERO,
 
                 button_station_inside: Aabb2::ZERO,
@@ -347,9 +355,15 @@ impl GameDispatcher {
                     file(vec2(415, 465)),
                 ];
 
+                if self.solver_state.current_level >= 2 {
+                    self.ui.meme_folder = Some(file(vec2(680, 540)).extend_uniform(15.0));
+                }
+
                 self.ui.opened_file =
                     Aabb2::from_corners(convert(vec2(423, 26)), convert(vec2(981, 578)))
                         .translate(self.ui.monitor_inside.top_left());
+                self.ui.meme_prev = file(vec2(470, 260));
+                self.ui.meme_next = file(vec2(930, 260));
             }
 
             if let DispatcherItem::ButtonStation = item {
@@ -433,6 +447,16 @@ impl GameDispatcher {
                         .draw(&self.camera, &self.context.geng, framebuffer);
                 }
 
+                if let Some(mut pos) = self.ui.meme_folder {
+                    if monitor_focused && pos.contains(self.cursor_position_game) {
+                        self.client_state.hovering_smth = true;
+                        pos = pos.extend_uniform(3.0);
+                    }
+                    geng_utils::texture::DrawTexture::new(&sprites.meme_folder)
+                        .fit(pos, vec2(0.5, 0.5))
+                        .draw(&self.camera, &self.context.geng, framebuffer);
+                }
+
                 // Opened file
                 if let Some(file) = self.client_state.opened_file {
                     let draw = geng_utils::texture::DrawTexture::new(&sprites.file_window)
@@ -451,6 +475,32 @@ impl GameDispatcher {
                             framebuffer,
                         );
                     }
+                } else if let Some(i) = self.client_state.opened_meme {
+                    let draw = geng_utils::texture::DrawTexture::new(&sprites.file_window)
+                        .fit(self.ui.opened_file, vec2(0.5, 0.5));
+                    let window = draw.target;
+                    draw.draw(&self.camera, &self.context.geng, framebuffer);
+
+                    if let Some(texture) = sprites.memes.get(i) {
+                        geng_utils::texture::DrawTexture::new(texture)
+                            .fit(window.extend_uniform(-50.0), vec2(0.5, 0.5))
+                            .draw(&self.camera, &self.context.geng, framebuffer);
+                    }
+                    let mut prev = self.ui.meme_prev;
+                    if prev.contains(self.cursor_position_game) {
+                        self.client_state.hovering_smth = true;
+                        prev = prev.extend_uniform(3.0);
+                    }
+                    geng_utils::texture::DrawTexture::new(&sprites.arrow_left)
+                        .fit(prev, vec2(0.5, 0.5))
+                        .draw(&self.camera, &self.context.geng, framebuffer);
+                    let mut next = self.ui.meme_next;
+                    if next.contains(self.cursor_position_game) {
+                        next = next.extend_uniform(3.0);
+                    }
+                    geng_utils::texture::DrawTexture::new(&sprites.arrow_right)
+                        .fit(next, vec2(0.5, 0.5))
+                        .draw(&self.camera, &self.context.geng, framebuffer);
                 }
             } else {
                 // Login
@@ -683,6 +733,22 @@ impl GameDispatcher {
                         }
                     }
                     self.client_state.opened_file = Some(file);
+                    self.client_state.opened_meme = None;
+                } else if let Some(meme) = &mut self.client_state.opened_meme {
+                    let total_memes = assets.dispatcher.sprites.memes.len();
+                    if self.ui.meme_prev.contains(self.cursor_position_game) {
+                        *meme = meme.checked_sub(1).unwrap_or(total_memes - 1);
+                    } else if self.ui.meme_next.contains(self.cursor_position_game) {
+                        *meme = meme.add(1);
+                        if *meme >= total_memes {
+                            *meme = 0;
+                        }
+                    }
+                } else if let Some(meme) = self.ui.meme_folder
+                    && meme.contains(self.cursor_position_game)
+                {
+                    self.client_state.opened_meme = Some(0);
+                    self.client_state.opened_file = None;
                 }
             } else if self.ui.user_icon.contains(self.cursor_position_game) {
                 assets.sounds.click.play();
@@ -745,6 +811,9 @@ impl GameDispatcher {
             }
             Focus::Monitor => {
                 if self.client_state.opened_file.take().is_some() {
+                    return;
+                }
+                if self.client_state.opened_meme.take().is_some() {
                     return;
                 }
                 self.change_focus(Focus::Whole);
