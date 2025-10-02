@@ -69,7 +69,7 @@ enum Focus {
 impl GameDispatcher {
     pub fn new(context: &Context, connection: ClientConnection) -> Self {
         let assets = context.assets.get();
-        let mut fx = assets.sounds.music.play();
+        let mut fx = assets.sounds.dispatcher.play();
         fx.set_volume(0.3);
 
         const TURN_BUTTON_SIZE: vec2<f32> = vec2(50.0, 50.0);
