@@ -27,6 +27,7 @@ pub struct GameDispatcher {
     camera_fov: SecondOrderState<f32>,
     camera_center: SecondOrderState<vec2<f32>>,
     solver_camera: Camera2d,
+    time: FTime,
 
     cursor_position_raw: vec2<f64>,
     cursor_position_game: vec2<f32>,
@@ -129,6 +130,7 @@ impl GameDispatcher {
                     scale: 1.0,
                 },
             },
+            time: FTime::ZERO,
 
             cursor_position_raw: vec2::ZERO,
             cursor_position_game: vec2::ZERO,
@@ -610,6 +612,21 @@ impl GameDispatcher {
                     .draw(&self.camera, &self.context.geng, framebuffer);
             }
         }
+
+        // Head
+        let t = (self.time.as_f32() / 30.0).fract();
+        let t = t.min(1.0 - t) * 2.0;
+        let t = (t - 0.45) / 0.1;
+        let t = t.clamp(0.0, 0.99);
+        let frame = (t * sprites.head.len() as f32).floor() as usize;
+        geng_utils::texture::DrawTexture::new(sprites.head.get(frame).unwrap_or(&sprites.head[0]))
+            .fit(
+                Aabb2::ZERO
+                    .extend_positive(SCREEN_SIZE.as_f32())
+                    .translate(vec2(0.0, -100.0)),
+                vec2(0.5, 0.0),
+            )
+            .draw(&self.camera, &self.context.geng, framebuffer);
     }
 
     fn cursor_press(&mut self) {
@@ -931,6 +948,7 @@ impl geng::State for GameDispatcher {
         self.camera.center = self.camera_center.current;
 
         let delta_time = FTime::new(delta_time);
+        self.time += delta_time;
         self.update_buttons(delta_time);
 
         if let Some((_, timer)) = &mut self.client_state.explosion {

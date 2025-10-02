@@ -12,6 +12,9 @@ pub struct DispatcherAssets {
 
 #[derive(geng::asset::Load)]
 pub struct DispatcherSprites {
+    #[load(list = "1..=7")]
+    pub head: Vec<Rc<PixelTexture>>,
+
     pub door: Rc<PixelTexture>,
     pub sign_open: Rc<PixelTexture>,
     pub sign_closed: Rc<PixelTexture>,
