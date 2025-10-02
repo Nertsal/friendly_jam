@@ -19,11 +19,6 @@ pub struct GameSolver {
     final_texture: ugli::Texture,
     framebuffer_size: vec2<usize>,
     screen: Aabb2<f32>,
-    /// Default scaling from texture to SCREEN_SIZE.
-    texture_scaling: f32,
-
-    cursor_position_raw: vec2<f64>,
-    cursor_position_game: vec2<f32>,
 
     client_state: SolverStateClient,
     state: SolverState,
@@ -93,10 +88,6 @@ impl GameSolver {
             final_texture: geng_utils::texture::new_texture(context.geng.ugli(), SCREEN_SIZE),
             framebuffer_size: vec2(1, 1),
             screen: Aabb2::ZERO.extend_positive(vec2(1.0, 1.0)),
-            texture_scaling: 1.0,
-
-            cursor_position_raw: vec2::ZERO,
-            cursor_position_game: vec2::ZERO,
 
             client_state: SolverStateClient {
                 time: FTime::ZERO,

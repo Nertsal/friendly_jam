@@ -132,6 +132,11 @@ impl geng::State for MainMenu {
                             crate::interop::ClientConnection::connect(&connect.unwrap())
                                 .await
                                 .unwrap();
+
+                        if let Some(token) = preferences::load("usertoken") {
+                            connection.send(ClientMessage::Login(token));
+                        }
+
                         connection.send(ClientMessage::JoinRoom(code));
                         let mut new_token = None;
                         let room_info = loop {
@@ -151,9 +156,7 @@ impl geng::State for MainMenu {
                             }
                         };
 
-                        if let Some(token) = preferences::load("usertoken") {
-                            connection.send(ClientMessage::Login(token));
-                        } else if let Some(token) = new_token {
+                        if let Some(token) = new_token {
                             preferences::save("usertoken", &token);
                         }
 

@@ -23,9 +23,6 @@ pub struct Assets {
     pub font: Rc<Font>,
 }
 
-#[derive(geng::asset::Load)]
-pub struct SpriteAssets {}
-
 #[derive(geng::asset::Load, Serialize, Deserialize)]
 #[load(serde = "ron")]
 pub struct Palette {
