@@ -308,6 +308,24 @@ impl ServerState {
                     }
                 }
             }
+            ClientMessage::CrashOther(message) => {
+                if let Some(room) = client
+                    .room
+                    .as_ref()
+                    .and_then(|room| self.rooms.get_mut(room))
+                    && let RoomState::Game(_) = &mut room.state
+                {
+                    for &(id, _) in &room.players {
+                        if client_id != id
+                            && let Some(client) = self.clients.get_mut(&id)
+                        {
+                            client
+                                .sender
+                                .send(ServerMessage::GameCrash(message.clone()));
+                        }
+                    }
+                }
+            }
         }
     }
 

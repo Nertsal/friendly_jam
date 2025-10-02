@@ -886,6 +886,7 @@ impl GameDispatcher {
             ServerMessage::SyncDispatcherState(dispatcher_state) => self.state = dispatcher_state,
             ServerMessage::SyncSolverState(solver_state) => self.solver_state = solver_state,
             ServerMessage::SyncSolverPlayer(player) => self.solver_player = Some(player),
+            ServerMessage::GameCrash(message) => panic!("{message}"),
         }
     }
 
@@ -911,7 +912,9 @@ impl GameDispatcher {
                 match item {
                     DispatcherItem::ButtonSalad => {
                         if self.state.monitor_unlocked && self.solver_state.levels_completed == 0 {
-                            panic!("ты нажал на салатовую кнопку")
+                            self.connection.send(ClientMessage::CrashOther(
+                                "твой друг нажал на салатовую кнопку".into(),
+                            ));
                         }
                     }
                     DispatcherItem::ButtonYellow => {

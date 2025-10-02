@@ -1051,6 +1051,7 @@ impl GameSolver {
                 self.dispatcher_state = dispatcher_state
             }
             ServerMessage::SyncSolverState(solver_state) => self.state = solver_state,
+            ServerMessage::GameCrash(message) => panic!("{message}"),
         }
     }
 }
