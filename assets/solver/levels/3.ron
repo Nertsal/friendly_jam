@@ -1,6 +1,6 @@
 (
     door_entrance: true,
-    door_exit: false,
+    door_exit: true,
     spawnpoint: (1.0, 1.0),
     transition: (
         min: (0.0, -2.0),

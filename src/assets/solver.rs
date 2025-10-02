@@ -31,6 +31,10 @@ pub struct SolverSprites {
     pub trashcan: Rc<PixelTexture>,
     pub recycle: Rc<PixelTexture>,
     pub green_hint: Rc<PixelTexture>,
+    pub bubble_tea: Rc<PixelTexture>,
+    pub bubble_door: Rc<PixelTexture>,
+    #[load(list = "0..=2")]
+    pub balls: Vec<Rc<PixelTexture>>,
     #[load(load_with = "load_gif(&manager, &base_path.join(\"explosion.gif\"))")]
     pub explosion: Vec<GifFrame>,
 }

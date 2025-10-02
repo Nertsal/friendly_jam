@@ -188,6 +188,9 @@ impl GameSolver {
         );
         let assets = self.context.assets.get();
         ugli::clear(framebuffer, Some(assets.palette.background), None, None);
+        let Some(level) = assets.solver.levels.get(self.state.current_level) else {
+            return;
+        };
 
         // Background
         if self.state.current_level == 0 {
@@ -203,6 +206,11 @@ impl GameSolver {
                     vec2(0.5, 0.5),
                 )
                 .draw(&self.camera, &self.context.geng, framebuffer);
+        } else if self.state.current_level == 3 {
+            let texture = &assets.solver.sprites.bubble_tea;
+            geng_utils::texture::DrawTexture::new(texture)
+                .fit(Aabb2::ZERO.extend_positive(LEVEL_SIZE), vec2(0.5, 0.5))
+                .draw(&self.camera, &self.context.geng, framebuffer);
         }
 
         // Bounds
@@ -211,17 +219,21 @@ impl GameSolver {
             .draw(&self.camera, &self.context.geng, framebuffer);
 
         // Doors
-        geng_utils::texture::DrawTexture::new(&assets.solver.sprites.door_closed)
-            .transformed(mat3::scale(vec2(-1.0, 1.0)))
-            .fit_height(self.client_state.door_entrance.compute_aabb().as_f32(), 0.0)
+        if level.door_entrance {
+            geng_utils::texture::DrawTexture::new(&assets.solver.sprites.door_closed)
+                .transformed(mat3::scale(vec2(-1.0, 1.0)))
+                .fit_height(self.client_state.door_entrance.compute_aabb().as_f32(), 0.0)
+                .draw(&self.camera, &self.context.geng, framebuffer);
+        }
+        if level.door_exit {
+            geng_utils::texture::DrawTexture::new(if self.state.is_exit_open() {
+                &assets.solver.sprites.door_open
+            } else {
+                &assets.solver.sprites.door_closed
+            })
+            .fit_height(self.client_state.door_exit.compute_aabb().as_f32(), 1.0)
             .draw(&self.camera, &self.context.geng, framebuffer);
-        geng_utils::texture::DrawTexture::new(if self.state.is_exit_open() {
-            &assets.solver.sprites.door_open
-        } else {
-            &assets.solver.sprites.door_closed
-        })
-        .fit_height(self.client_state.door_exit.compute_aabb().as_f32(), 1.0)
-        .draw(&self.camera, &self.context.geng, framebuffer);
+        }
 
         // Platforms
         for platform in &self.client_state.platforms {
@@ -427,6 +439,35 @@ impl GameSolver {
                 )
             })
             .collect();
+
+        if self.state.current_level == 3 {
+            // Bubble tea walls
+            self.client_state.level_static_colliders.push(Collider {
+                position: vec2(5.0, 4.5).as_r32(),
+                rotation: Angle::from_degrees(15.0).as_r32(),
+                shape: Shape::Rectangle {
+                    width: r32(0.05),
+                    height: r32(9.0),
+                },
+            });
+            self.client_state.level_static_colliders.push(Collider {
+                position: vec2(11.0, 9.0 - 3.3).as_r32(),
+                rotation: Angle::from_degrees(-15.0).as_r32(),
+                shape: Shape::Rectangle {
+                    width: r32(0.05),
+                    height: r32(4.0),
+                },
+            });
+            // Door
+            self.client_state.level_static_colliders.push(Collider {
+                position: vec2(10.0, 9.0 - 7.2).as_r32(),
+                rotation: Angle::from_degrees(-15.0).as_r32(),
+                shape: Shape::Rectangle {
+                    width: r32(0.05),
+                    height: r32(2.0),
+                },
+            });
+        }
     }
 
     fn update_items(&mut self, delta_time: FTime) {
