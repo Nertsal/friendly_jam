@@ -348,7 +348,7 @@ impl GameDispatcher {
                 ];
 
                 self.ui.opened_file =
-                    Aabb2::from_corners(convert(vec2(430, 150)), convert(vec2(900, 420)))
+                    Aabb2::from_corners(convert(vec2(423, 26)), convert(vec2(981, 578)))
                         .translate(self.ui.monitor_inside.top_left());
             }
 
@@ -446,7 +446,7 @@ impl GameDispatcher {
                             text,
                             10.0,
                             assets.palette.text,
-                            window.extend_uniform(-10.0),
+                            window.extend_uniform(-30.0),
                             &self.camera,
                             framebuffer,
                         );
