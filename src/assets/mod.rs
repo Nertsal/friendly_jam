@@ -66,8 +66,11 @@ friendly_derive::texture_atlas!(pub SpritesAtlas {
     white,
 
     button_background,
-    play_dispatcher,
-    play_solver,
+    lobby,
+    think0,
+    think1,
+    run0,
+    run1,
 });
 
 fn load_gif(

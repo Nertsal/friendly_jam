@@ -126,7 +126,7 @@ impl geng::State for Lobby {
         );
         self.ui_context.frame_end();
 
-        ugli::clear(framebuffer, Some(Rgba::BLACK), Some(1.0), None);
+        ugli::clear(framebuffer, Some(Rgba::WHITE), Some(1.0), None);
         let camera = &geng::PixelPerfectCamera;
 
         let geometry = RefCell::new(Geometry::new());
@@ -163,25 +163,39 @@ impl LobbyUi {
         context.layout_size = screen.height() * 0.07;
         let atlas = &context.context.assets.get().atlas;
 
-        let mut code = screen;
-        let mut solver = code.split_bottom(0.66);
-        let dispatcher = solver.split_right(0.5);
+        context
+            .state
+            .get_root_or(|| IconWidget::new(atlas.lobby()))
+            .update(screen, context);
+
+        let code = screen.align_aabb(vec2(560.0, 150.0), vec2(0.5, 0.63));
 
         let code_text = context.state.get_root_or(|| TextWidget::new(""));
-        code_text.text = format!("Код комнаты: {}", state.room_info.code).into();
+        code_text.options.color = Rgba::BLACK;
+        code_text.text = state.room_info.code.to_string().into();
         code_text.update(code, context);
 
+        let mut dispatcher = screen.align_aabb(vec2(650.0, 230.0), vec2(0.8, 0.15));
         let button = context
             .state
-            .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Диспетчер"));
+            .get_root_or(|| ButtonWidget::new(atlas.think0()));
+        if dispatcher.contains(context.cursor.position) {
+            dispatcher = dispatcher
+                .extend_symmetric(vec2(atlas.think0().size().as_f32().aspect(), 1.0) * 10.0);
+        }
         button.update(dispatcher, context);
         if button.state.mouse_left.clicked {
             state.select_role(GameRole::Dispatcher);
         }
 
+        let mut solver = screen.align_aabb(vec2(650.0, 230.0), vec2(0.2, 0.15));
         let button = context
             .state
-            .get_root_or(|| ButtonWidget::new(atlas.button_background()).with_text("Беглец"));
+            .get_root_or(|| ButtonWidget::new(atlas.run0()));
+        if solver.contains(context.cursor.position) {
+            solver =
+                solver.extend_symmetric(vec2(atlas.run0().size().as_f32().aspect(), 1.0) * 10.0);
+        }
         button.update(solver, context);
         if button.state.mouse_left.clicked {
             state.select_role(GameRole::Solver);

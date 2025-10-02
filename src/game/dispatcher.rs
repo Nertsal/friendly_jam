@@ -829,7 +829,7 @@ impl GameDispatcher {
                                 .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
                         }
                     }
-                    DispatcherItem::ButtonWhite => {
+                    DispatcherItem::ButtonCyan => {
                         if self.solver_state.levels_completed == 4 {
                             self.solver_state.levels_completed += 1;
                             self.connection
