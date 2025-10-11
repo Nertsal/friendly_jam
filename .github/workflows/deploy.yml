@@ -32,7 +32,7 @@ jobs:
       contents: write
     environment:
       name: main
-      url: https://nertsal.github.io/friendly
+      url: https://nertsal.github.io/ded-end
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4

@@ -1372,6 +1372,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
 
 [[package]]
+name = "ded-end"
+version = "0.1.0"
+dependencies = [
+ "ctrlc",
+ "friendly-derive",
+ "geng",
+ "geng-utils",
+ "parry2d",
+ "rusttype",
+ "serde",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1775,21 +1790,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "thiserror 2.0.16",
-]
-
-[[package]]
-name = "friendly_jam"
-version = "0.1.0"
-dependencies = [
- "ctrlc",
- "friendly-derive",
- "geng",
- "geng-utils",
- "parry2d",
- "rusttype",
- "serde",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]

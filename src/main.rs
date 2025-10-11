@@ -31,14 +31,14 @@ fn main() {
     logger::init();
     geng::setup_panic_handler();
 
-    let mut args: Args = clap::Parser::parse();
+    let mut args: Args = cli::parse();
 
     if cfg!(debug_assertions) {
         args.geng.hot_reload = Some(true);
     }
 
     let mut geng_options = geng::ContextOptions::default();
-    geng_options.window.title = "Friendly Jam".to_string();
+    geng_options.window.title = "Ded End".to_string();
     geng_options.with_cli(&args.geng);
 
     if args.connect.is_none() && args.server.is_none() {

@@ -336,9 +336,6 @@ impl ServerState {
     }
 
     pub fn tick(&mut self) {
-        self.rooms.retain(|_code, room| {
-            room.players.retain(|(id, _)| self.clients.contains_key(id));
-            !room.players.is_empty()
-        })
+        self.rooms.retain(|_code, room| !room.players.is_empty())
     }
 }
