@@ -15,6 +15,7 @@ const LEVEL_SIZE: vec2<f32> = vec2(16.0, 9.0);
 pub struct GameSolver {
     context: Context,
     connection: ClientConnection,
+    test: bool,
 
     final_texture: ugli::Texture,
     framebuffer_size: vec2<usize>,
@@ -84,6 +85,7 @@ impl GameSolver {
         let mut game = Self {
             context: context.clone(),
             connection,
+            test: test.is_some(),
 
             final_texture: geng_utils::texture::new_texture(context.geng.ugli(), SCREEN_SIZE),
             framebuffer_size: vec2(1, 1),
@@ -157,6 +159,11 @@ impl GameSolver {
                 .music
                 .play_music(&self.context.assets.get().sounds.dispatcher);
         }
+
+        self.client_state.level_static_colliders.clear();
+        self.client_state.platforms.clear();
+        self.client_state.bubble_balls.clear();
+        self.client_state.projectiles.clear();
 
         self.player_respawn();
         self.update_level_colliders();
@@ -428,7 +435,6 @@ impl GameSolver {
     }
 
     fn update_level_colliders(&mut self) {
-        self.client_state.level_static_colliders.clear();
         let assets = self.context.assets.get();
         let Some(level) = assets.solver.levels.get(self.state.current_level) else {
             return;
@@ -1190,6 +1196,18 @@ impl geng::State for GameSolver {
         if let geng::Event::KeyPress { key } = event {
             match key {
                 geng::Key::F5 => {
+                    self.reload_level();
+                }
+                geng::Key::F4 if self.test => {
+                    // Prev level
+                    self.state.current_level = self.state.current_level.saturating_sub(1);
+                    self.state.levels_completed = self.state.current_level;
+                    self.reload_level();
+                }
+                geng::Key::F6 if self.test => {
+                    // Next level
+                    self.state.current_level += 1;
+                    self.state.levels_completed = self.state.current_level;
                     self.reload_level();
                 }
                 geng::Key::Escape => self.press_escape(),
