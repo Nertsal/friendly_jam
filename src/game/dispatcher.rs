@@ -931,6 +931,7 @@ impl GameDispatcher {
                     }
                     DispatcherItem::ButtonGreen => {
                         if self.solver_state.trashcan_evil
+                            && self.solver_state.current_level == 3
                             && self.solver_state.levels_completed == 2
                         {
                             self.solver_state.trashcan_evil = false;
@@ -939,7 +940,9 @@ impl GameDispatcher {
                         }
                     }
                     DispatcherItem::ButtonCyan => {
-                        if self.solver_state.levels_completed == 4 {
+                        if self.solver_state.current_level == 5
+                            && self.solver_state.levels_completed == 4
+                        {
                             self.solver_state.levels_completed += 1;
                             self.connection
                                 .send(ClientMessage::SyncSolverState(self.solver_state.clone()));
