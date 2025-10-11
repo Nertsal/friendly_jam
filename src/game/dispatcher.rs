@@ -881,7 +881,8 @@ impl GameDispatcher {
             ServerMessage::Ping
             | ServerMessage::RoomJoined(..)
             | ServerMessage::StartGame(..)
-            | ServerMessage::YourToken(_) => {}
+            | ServerMessage::YourToken(_)
+            | ServerMessage::SyncRoomPlayers(_) => {}
             ServerMessage::Error(error) => log::error!("Server error: {error}"),
             ServerMessage::SyncDispatcherState(dispatcher_state) => self.state = dispatcher_state,
             ServerMessage::SyncSolverState(solver_state) => self.solver_state = solver_state,

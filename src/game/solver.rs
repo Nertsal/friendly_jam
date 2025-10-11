@@ -1047,7 +1047,8 @@ impl GameSolver {
             | ServerMessage::RoomJoined(..)
             | ServerMessage::StartGame(..)
             | ServerMessage::SyncSolverPlayer(_)
-            | ServerMessage::YourToken(_) => {}
+            | ServerMessage::YourToken(_)
+            | ServerMessage::SyncRoomPlayers(_) => {}
             ServerMessage::Error(error) => log::error!("Server error: {error}"),
             ServerMessage::SyncDispatcherState(dispatcher_state) => {
                 self.dispatcher_state = dispatcher_state

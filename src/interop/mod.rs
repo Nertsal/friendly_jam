@@ -51,6 +51,7 @@ pub enum ServerMessage {
     Error(String),
     YourToken(String),
     RoomJoined(RoomInfo),
+    SyncRoomPlayers(usize),
     StartGame(GameRole),
     SyncDispatcherState(DispatcherState),
     SyncSolverState(SolverState),

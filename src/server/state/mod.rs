@@ -174,6 +174,15 @@ impl ServerState {
                                 room.players.push((client_id, client.token.clone()));
                                 client.room = Some(code.clone());
                                 client.sender.send(ServerMessage::RoomJoined(room.info()));
+                                for &(id, _) in &room.players {
+                                    if id != client_id
+                                        && let Some(client) = self.clients.get_mut(&id)
+                                    {
+                                        client.sender.send(ServerMessage::SyncRoomPlayers(
+                                            room.players.len(),
+                                        ));
+                                    }
+                                }
                             } else {
                                 client
                                     .sender

@@ -64,6 +64,9 @@ impl Lobby {
                 preferences::save("usertoken", &token);
             }
             ServerMessage::RoomJoined(_) => {}
+            ServerMessage::SyncRoomPlayers(count) => {
+                self.state.room_info.players = count;
+            }
             ServerMessage::StartGame(game_role) => {
                 log::info!("Starting game as {:?}", game_role);
                 let state: Box<dyn geng::State> = match game_role {
