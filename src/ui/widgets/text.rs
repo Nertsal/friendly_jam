@@ -43,7 +43,11 @@ impl TextWidget {
 
         let max_width = width * 0.9; // Leave some space TODO: move into a parameter or smth
         let max_size = max_width / measure.width();
-        let size = self.options.size.min(max_size);
+        let size = self
+            .options
+            .size
+            .min(max_size)
+            .min(self.state.position.height());
 
         let mut options = self.options;
         options.size = size;

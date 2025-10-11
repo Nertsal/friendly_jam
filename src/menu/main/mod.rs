@@ -224,9 +224,13 @@ impl MainMenuUi {
         screen: Aabb2<f32>,
         context: &mut UiContext,
     ) {
+        let screen = screen.fit_aabb(vec2(16.0, 9.0), vec2(0.5, 0.5));
         context.screen = screen;
         context.font_size = screen.height() * 0.05;
         context.layout_size = screen.height() * 0.07;
+
+        let screen_ratio = screen.size() / vec2(1920.0, 1080.0);
+
         let assets = context.context.assets.get();
         let atlas = &assets.atlas;
 
@@ -235,7 +239,7 @@ impl MainMenuUi {
             .get_root_or(|| IconWidget::new(atlas.menu()))
             .update(screen, context);
 
-        let mut create = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.55));
+        let mut create = screen.align_aabb(vec2(483.0, 118.0) * screen_ratio, vec2(0.1, 0.55));
         let button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Создать комнату")
         });
@@ -250,7 +254,7 @@ impl MainMenuUi {
             state.action = Some(Action::CreateRoom);
         }
 
-        let mut join = screen.align_aabb(vec2(483.0, 118.0), vec2(0.1, 0.4));
+        let mut join = screen.align_aabb(vec2(483.0, 118.0) * screen_ratio, vec2(0.1, 0.4));
         let join_button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Присоединиться")
         });
@@ -262,14 +266,26 @@ impl MainMenuUi {
         }
         join_button.update(join, context);
 
-        let code = screen.align_aabb(vec2(210.0, 80.0), vec2(0.4, 0.4));
+        let mut code = screen.align_aabb(vec2(210.0, 80.0) * screen_ratio, vec2(0.4, 0.4));
+        if code.contains(context.cursor.position) {
+            code = code.extend_symmetric(
+                vec2(atlas.code_background().size().as_f32().aspect(), 1.0) * 10.0,
+            );
+        }
+        let code_input = context
+            .state
+            .get_root_or(|| InputWidget::new("").max_len(4).uppercase());
+        code_input.update(code, context);
+        code_input.name.options.color = assets.palette.text;
         context
             .state
             .get_root_or(|| IconWidget::new(atlas.code_background()))
-            .update(code, context);
-        let code_input = context.state.get_root_or(|| InputWidget::new(""));
-        code_input.update(code, context);
-        code_input.name.options.color = assets.palette.text;
+            .update(
+                code.extend_symmetric(
+                    vec2(atlas.code_background().size().as_f32().aspect(), 1.0) * 2.0,
+                ),
+                context,
+            );
 
         if join_button.state.mouse_left.clicked {
             state.action = Some(Action::Join(code_input.raw.clone()));

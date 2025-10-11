@@ -11,6 +11,8 @@ pub struct InputWidget {
     pub editing: bool,
 
     pub hide_input: bool,
+    pub max_len: Option<usize>,
+    pub uppercase_only: bool,
     pub format: InputFormat,
     pub layout_vertical: bool,
 }
@@ -68,8 +70,24 @@ impl InputWidget {
             editing: false,
 
             hide_input: false,
+            max_len: None,
+            uppercase_only: false,
             format: InputFormat::Any,
             layout_vertical: false,
+        }
+    }
+
+    pub fn max_len(self, len: usize) -> Self {
+        Self {
+            max_len: Some(len),
+            ..self
+        }
+    }
+
+    pub fn uppercase(self) -> Self {
+        Self {
+            uppercase_only: true,
+            ..self
         }
     }
 
@@ -121,6 +139,14 @@ impl InputWidget {
             if self.raw != context.text_edit.get_text() {
                 self.raw = context.text_edit.get_text();
                 self.raw = self.format.fix(&self.raw);
+                if let Some(max_len) = self.max_len
+                    && self.raw.len() > max_len
+                {
+                    self.raw = self.raw.chars().take(max_len).collect();
+                }
+                if self.uppercase_only {
+                    self.raw = self.raw.to_uppercase();
+                }
                 self.edit_id = Some(context.text_edit.edit(&self.raw));
 
                 self.text.text = if self.hide_input {
@@ -170,7 +196,7 @@ impl InputWidget {
         let mut geometry = self.name.draw_colored(context, color);
         geometry.merge(self.text.draw_colored(context, color));
         if self.editing {
-            let pos = self.text.state.position;
+            let pos = self.state.position;
             let underline = Aabb2::point(pos.center() - vec2(0.0, context.font_size * 0.5))
                 .extend_symmetric(vec2(pos.width(), context.font_size * 0.1) / 2.0);
             geometry.merge(context.geometry.quad(underline, Rgba::BLUE));
