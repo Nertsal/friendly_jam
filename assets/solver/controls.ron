@@ -1,6 +1,6 @@
 (
     move_left: [Key(ArrowLeft), Key(A)],
     move_right: [Key(ArrowRight), Key(D)],
-    jump: [Key(Space), Key(W)],
+    jump: [Key(Space), Key(W), Key(ArrowUp)],
     pickup: [Key(E)],
 )
