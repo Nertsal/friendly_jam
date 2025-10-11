@@ -239,7 +239,12 @@ impl MainMenuUi {
             .get_root_or(|| IconWidget::new(atlas.menu()))
             .update(screen, context);
 
-        let mut create = screen.align_aabb(vec2(483.0, 118.0) * screen_ratio, vec2(0.1, 0.55));
+        let mk_button = |pos: vec2<f32>, size| {
+            Aabb2::point(screen.align_pos(vec2(pos.x, 1080.0 - pos.y) / vec2(1920.0, 1080.0)))
+                .extend_symmetric(size * screen_ratio / 2.0)
+        };
+
+        let mut create = mk_button(vec2(309.0, 453.0), vec2(483.0, 118.0));
         let button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Создать комнату")
         });
@@ -254,7 +259,7 @@ impl MainMenuUi {
             state.action = Some(Action::CreateRoom);
         }
 
-        let mut join = screen.align_aabb(vec2(483.0, 118.0) * screen_ratio, vec2(0.1, 0.4));
+        let mut join = mk_button(vec2(320.0, 620.0), vec2(483.0, 118.0));
         let join_button = context.state.get_root_or(|| {
             ButtonWidget::new(atlas.button_background()).with_text("Присоединиться")
         });
@@ -266,7 +271,7 @@ impl MainMenuUi {
         }
         join_button.update(join, context);
 
-        let mut code = screen.align_aabb(vec2(210.0, 80.0) * screen_ratio, vec2(0.4, 0.4));
+        let mut code = mk_button(vec2(715.0, 625.0), vec2(210.0, 80.0));
         if code.contains(context.cursor.position) {
             code = code.extend_symmetric(
                 vec2(atlas.code_background().size().as_f32().aspect(), 1.0) * 10.0,
